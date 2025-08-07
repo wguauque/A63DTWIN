@@ -135,6 +135,65 @@
                     myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
                         edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
                     });
+
+// --- Interactive Clipping Polygon Drawing Logic ---
+const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+let activeShapePoints = [];
+let activeShape;
+let floatingPoint;
+
+// Draws the points as you click
+handler.setInputAction(function (event) {
+    const earthPosition = scene.pickPosition(event.position);
+    if (Cesium.defined(earthPosition)) {
+        if (activeShapePoints.length === 0) {
+            floatingPoint = viewer.entities.add({
+                position: earthPosition,
+                point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
+            });
+            activeShapePoints.push(earthPosition);
+            const dynamicPositions = new Cesium.CallbackProperty(function () {
+                return new Cesium.PolygonHierarchy(activeShapePoints);
+            }, false);
+            activeShape = viewer.entities.add({
+                polygon: {
+                    hierarchy: dynamicPositions,
+                    material: new Cesium.ColorMaterialProperty(Cesium.Color.ORANGERED.withAlpha(0.7)),
+                },
+            });
+        }
+        activeShapePoints.push(earthPosition);
+    }
+}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+// Draws the line as you move the mouse
+handler.setInputAction(function (event) {
+    if (Cesium.defined(floatingPoint)) {
+        const newPosition = scene.pickPosition(event.endPosition);
+        if (Cesium.defined(newPosition)) {
+            floatingPoint.position.setValue(newPosition);
+            activeShapePoints.pop();
+            activeShapePoints.push(newPosition);
+        }
+    }
+}, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+// Finishes the shape on right-click
+handler.setInputAction(function () {
+    if (activeShapePoints.length > 2) {
+        const finalPoints = activeShapePoints.slice(0, -1);
+        if (myTileset?.clippingPolygons) {
+             const newClippingPolygon = new Cesium.ClippingPolygon({ positions: finalPoints });
+             myTileset.clippingPolygons.add(newClippingPolygon);
+        }
+    }
+    // Clean up entities
+    viewer.entities.remove(floatingPoint);
+    viewer.entities.remove(activeShape);
+    floatingPoint = undefined;
+    activeShape = undefined;
+    activeShapePoints = [];
+}, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
                 }
 
                 loadingOverlayElement.style.opacity = "0";
@@ -181,3 +240,4 @@
     </script>
 </body>
 </html>
+
