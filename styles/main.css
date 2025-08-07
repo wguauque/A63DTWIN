@@ -1,13 +1,11 @@
-/* --- A63 Digital Twin - Professional Styling --- */
-
-/* 1. Global Styles & Variables */
+/* Global */
 :root {
     --primary-bg: #f4f7f6;
     --header-bg: #ffffff;
     --card-bg: #ffffff;
     --text-primary: #2c3e50;
     --text-secondary: #5a6e80;
-    --accent-color: #4682B4; /* SteelBlue from your Cesium style */
+    --accent-color: #4682B4;
     --border-color: #e2e8f0;
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
@@ -21,7 +19,7 @@ body {
     line-height: 1.6;
 }
 
-/* 2. Main Header & Navigation */
+/* Header */
 .main-header {
     background-color: var(--header-bg);
     border-bottom: 1px solid var(--border-color);
@@ -50,69 +48,6 @@ body {
     height: 32px;
 }
 
-/* 5. ArcGIS Map Specific Styles */
-#viewDiv {
-    padding: 0;
-    margin: 0;
-    height: 100%;
-    width: 100%;
-}
-
-#controlsDiv {
-    position: absolute;
-    top: calc(70px + 15px); /* Position below sticky header */
-    left: 15px;
-    background: var(--card-bg);
-    padding: 1rem;
-    z-index: 50; /* Below header but above map */
-    box-shadow: var(--shadow-md);
-    border-radius: 12px;
-    width: 280px;
-    border: 1px solid var(--border-color);
-}
-
-#controlsDiv label {
-    display: block;
-    font-weight: 500;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.25rem;
-    margin-top: 0.75rem;
-}
-
-#controlsDiv select,
-#controlsDiv input {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 0.9rem;
-    box-sizing: border-box;
-}
-
-#controlsDiv #editDiv {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
-}
-
-#controlsDiv #searchResults {
-    margin-top: 5px;
-    max-height: 150px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-}
-
-#controlsDiv #searchResults div {
-    padding: 0.5rem;
-    cursor: pointer;
-}
-
-#controlsDiv #searchResults div:hover {
-    background-color: #f0f4f8;
-}
-
 .main-nav a {
     color: var(--text-secondary);
     text-decoration: none;
@@ -134,7 +69,7 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
-/* 3. Page Layout & Content Cards */
+/* Page Layout */
 .page-container {
     max-width: 1200px;
     margin: 2rem auto;
@@ -190,15 +125,78 @@ body {
     box-shadow: var(--shadow-md);
 }
 
-/* 4. Full-Screen Component Styling (for PowerBI, Cesium, ArcGIS) */
+/* Components */
 .component-container {
     width: 100%;
-    height: calc(100vh - 70px); /* Full viewport height minus header height */
-    margin-top: 70px; /* To clear the sticky header */
+    height: calc(100vh - 70px);
+    margin-top: 70px;
     border: none;
     display: block;
 }
 
 .component-wrapper {
     position: fixed;
+}
 
+/* ArcGIS Map */
+#viewDiv {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+}
+
+#controlsDiv {
+    position: absolute;
+    top: calc(70px + 15px);
+    left: 15px;
+    background: var(--card-bg);
+    padding: 1rem;
+    z-index: 50;
+    box-shadow: var(--shadow-md);
+    border-radius: 12px;
+    width: 280px;
+    border: 1px solid var(--border-color);
+}
+
+#controlsDiv label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    margin-top: 0.75rem;
+}
+
+#controlsDiv select,
+#controlsDiv input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+#controlsDiv #editDiv {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+#controlsDiv #searchResults {
+    margin-top: 5px;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+#controlsDiv #searchResults div {
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+#controlsDiv #searchResults div:hover {
+    background-color: #f0f4f8;
+}
