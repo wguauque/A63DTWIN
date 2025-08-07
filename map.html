@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A63 Digital Twin - ArcGIS Map</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+</head>
+<body>
+    <header class="main-header">
+        <a href="index.html" class="header-brand">
+            <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="Logo">
+            <span>A63 Digital Twin</span>
+        </a>
+        <nav class="main-nav">
+            <a href="index.html">Home</a>
+            <a href="cesium.html">3D Model</a>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="map.html" class="active">ArcGIS Map</a>
+        </nav>
+    </header>
+
+    <main class="component-wrapper">
+        <div id="viewDiv"></div>
+
+        <div id="controlsDiv">
+            <div id="filterDiv">
+                <label for="basemapSelect">Basemap:</label>
+                <select id="basemapSelect">
+                    <option value="terrain">Terrain</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="topo-vector">Topographic</option>
+                    <option value="streets">Streets</option>
+                    <option value="gray-vector">Gray</option>
+                    <option value="dark-gray-vector">Dark</option>
+                </select>
+
+                <label for="voieSelect">Filter by Voie:</label>
+                <select id="voieSelect">
+                    <option value="">All</option>
+                    <option value="BAU">BAU</option>
+                    <option value="VL">VL</option>
+                    <option value="VR">VR</option>
+                </select>
+
+                <label for="searchBox">Search PR:</label>
+                <input type="text" id="searchBox" placeholder="Search PR..." />
+                <div id="searchResults"></div>
+            </div>
+            
+            <div id="editDiv">
+                <button id="drawPolygonBtn" class="button-link">Add Pavement Zone</button>
+                <button id="cancelBtn" class="button-link" style="display: none; background-color: var(--text-secondary);">Cancel</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://js.arcgis.com/4.29/"></script>
+    <script>
+        // Your entire ArcGIS JavaScript code goes here
+        require([
+            "esri/Map", "esri/views/SceneView", "esri/layers/FeatureLayer",
+            "esri/widgets/Sketch/SketchViewModel", "esri/layers/GraphicsLayer", "esri/Graphic"
+        ], (Map, SceneView, FeatureLayer, SketchViewModel, GraphicsLayer, Graphic) => {
+            
+            const map = new Map({
+                basemap: "terrain",
+                ground: "world-elevation"
+            });
+
+            const view = new SceneView({
+                container: "viewDiv", map: map, center: [2.35, 48.85], zoom: 12
+            });
+
+            const sketchLayer = new GraphicsLayer({ listMode: "hide" });
+            map.add(sketchLayer);
+
+            const paveLayer = new FeatureLayer({
+                url: "https://services3.arcgis.com/V1QjC3D53505GgO3/arcgis/rest/services/pave_zons/FeatureServer/0",
+                outFields: ["*"],
+                popupTemplate: {
+                    title: "{Voie} - Zone {zone} mm",
+                    content: `<b>Description:</b> {descriptio}<br><b>Last Update:</b> {date_derni:DateFormat}<br> <b>Surface:</b> {surface} m²<br>
+                              <b>Length:</b> {Shape__Length:NumberFormat(places:2)} m<br> <b>PR:</b> {PR_1} → {PR_2}<br><b>Direction:</b> {Sens}`
+                },
+                renderer: {
+                    type: "simple",
+                    symbol: {
+                        type: "polygon-3d",
+                        symbolLayers: [{
+                            type: "extrude",
+                            material: { color: "orange" },
+                            size: 1
+                        }]
+                    },
+                    visualVariables: [{
+                        type: "size", field: "zone", valueExpressionTitle: "Thickness (mm)",
+                        stops: [
+                            { value: 0, size: 0.01 }, { value: 50, size: 0.05 }, { value: 150, size: 0.15 },
+                            { value: 300, size: 0.3 }, { value: 500, size: 0.5 }
+                        ],
+                        valueUnit: "meters", outOfRangeSize: 0.1
+                    }, {
+                        type: "color", field: "zone",
+                        stops: [
+                            { value: 50, color: "#FFEDA0", label: "<= 50 mm" }, { value: 150, color: "#FEB24C", label: "<= 150 mm" },
+                            { value: 300, color: "#FC4E2A", label: "<= 300 mm" }, { value: 500, color: "#E31A1C", label: "> 300 mm" }
+                        ],
+                        defaultColor: "#cccccc", defaultLabel: "Unknown Thickness"
+                    }]
+                }
+            });
+            map.add(paveLayer);
+
+            const sketchViewModel = new SketchViewModel({
+                view: view, layer: sketchLayer,
+                polygonSymbol: {
+                    type: "simple-fill", color: [150, 150, 150, 0.2],
+                    outline: { color: [0, 0, 0, 0.8], width: 2 }
+                },
+                defaultCreateOptions: { mode: "click" }
+            });
+
+            const drawPolygonBtn = document.getElementById("drawPolygonBtn");
+            const cancelBtn = document.getElementById("cancelBtn");
+            const basemapSelect = document.getElementById("basemapSelect");
+            const voieSelect = document.getElementById("voieSelect");
+            const searchBox = document.getElementById("searchBox");
+            const searchResults = document.getElementById("searchResults");
+            let voieFilter = "";
+
+            function resetUI() {
+                drawPolygonBtn.disabled = false;
+                cancelBtn.style.display = "none";
+                sketchLayer.removeAll();
+            }
+
+            drawPolygonBtn.addEventListener("click", () => {
+                drawPolygonBtn.disabled = true;
+                cancelBtn.style.display = "inline-block";
+                sketchViewModel.create("polygon");
+            });
+
+            cancelBtn.addEventListener("click", () => {
+                sketchViewModel.cancel();
+                resetUI();
+            });
+
+            sketchViewModel.on("create", (event) => {
+                if (event.state === "complete") {
+                    sketchLayer.remove(event.graphic);
+                    const voie = prompt("Enter Voie (e.g., BAU, VL, VR):", "VL");
+                    const zoneStr = prompt("Enter Zone thickness (mm):", "150");
+                    const description = prompt("Enter Description:", "New Pavement Section");
+                    const pr1Str = prompt("Enter Starting PR:", "0");
+                    const pr2Str = prompt("Enter Ending PR:", "100");
+                    const sens = prompt("Enter Direction (Sens):", "A");
+
+                    if (voie === null || zoneStr === null || description === null || pr1Str === null || pr2Str === null || sens === null) {
+                        alert("Attribute entry cancelled. Feature not added."); resetUI(); return;
+                    }
+
+                    const zone = parseInt(zoneStr, 10), pr1 = parseInt(pr1Str, 10), pr2 = parseInt(pr2Str, 10);
+                    if (isNaN(zone) || isNaN(pr1) || isNaN(pr2)) {
+                        alert("Invalid numeric input for Zone or PR."); resetUI(); return;
+                    }
+
+                    const newPolygonGraphic = new Graphic({
+                        geometry: event.graphic.geometry,
+                        attributes: {
+                            Voie: voie, zone: zone, descriptio: description,
+                            date_derni: new Date().getTime(), PR_1: pr1, PR_2: pr2, Sens: sens
+                        }
+                    });
+
+                    paveLayer.applyEdits({ addFeatures: [newPolygonGraphic] }).then((editResults) => {
+                        if (editResults.addFeatureResults.length > 0 && !editResults.addFeatureResults[0].error) {
+                            alert("Pavement Zone added successfully!");
+                        } else {
+                            console.error("Error adding feature:", editResults.addFeatureResults[0]?.error);
+                            alert("Failed to add Pavement Zone.");
+                        }
+                        resetUI();
+                    }).catch((error) => {
+                        console.error("Error applying edits:", error); alert("An error occurred while saving."); resetUI();
+                    });
+                } else if (event.state === "cancel") {
+                    resetUI();
+                }
+            });
+
+            basemapSelect.addEventListener("change", (e) => { map.basemap = e.target.value; });
+            voieSelect.addEventListener("change", (e) => {
+                voieFilter = e.target.value; applyFilters();
+            });
+
+            const applyFilters = () => {
+                paveLayer.definitionExpression = voieFilter ? `Voie = '${voieFilter}'` : null;
+                if (paveLayer.definitionExpression) {
+                    paveLayer.queryExtent().then((res) => {
+                        if (res.extent) { view.goTo(res.extent.expand(1.2)); }
+                    });
+                } else {
+                    view.goTo(paveLayer.fullExtent);
+                }
+            };
+            
+            searchBox.addEventListener("input", () => {
+                const searchTerm = searchBox.value.trim();
+                searchResults.innerHTML = "";
+                if (searchTerm.length > 1 && !isNaN(searchTerm)) {
+                    const query = paveLayer.createQuery();
+                    query.where = `PR_1 >= ${searchTerm} AND PR_1 < ${parseInt(searchTerm) + 1000}`;
+                    query.outFields = ["PR_1", "OBJECTID"]; query.returnDistinctValues = true;
+                    query.orderByFields = ["PR_1"]; query.num = 10;
+                    paveLayer.queryFeatures(query).then((results) => {
+                        if(results.features.length > 0) {
+                            results.features.forEach((feature) => {
+                                const prValue = feature.attributes.PR_1;
+                                const resultItem = document.createElement("div");
+                                resultItem.textContent = `PR: ${prValue}`;
+                                resultItem.addEventListener("click", () => {
+                                    searchBox.value = prValue;
+                                    searchResults.innerHTML = ""; searchResults.style.display = "none";
+                                    const zoomQuery = paveLayer.createQuery();
+                                    zoomQuery.where = `PR_1 = ${prValue}`;
+                                    paveLayer.definitionExpression = zoomQuery.where;
+                                    paveLayer.queryExtent(zoomQuery).then((response) => {
+                                        if (response.extent) { view.goTo(response.extent.expand(1.5)); }
+                                    });
+                                });
+                                searchResults.appendChild(resultItem);
+                            });
+                            searchResults.style.display = "block";
+                        } else { searchResults.style.display = "none"; }
+                    });
+                } else { searchResults.style.display = "none"; }
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!searchBox.contains(event.target) && !searchResults.contains(event.target)) {
+                    searchResults.style.display = 'none';
+                }
+            });
+
+            view.when(() => {
+                view.goTo(paveLayer.fullExtent);
+            });
+        });
+    </script>
+</body>
+</html>
