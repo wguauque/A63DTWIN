@@ -68,10 +68,14 @@
 
             try {
                 const viewer = new Cesium.Viewer("cesiumContainer", {
-                    timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false,
-                    geocoder: Cesium.IonGeocodeProviderType.GOOGLE,
-                    creditContainer: document.createElement("div"), // Hides credits from default position
-                    infoBox: false, selectionIndicator: false
+                    timeline: false,
+                    animation: false,
+                    sceneModePicker: false,
+                    baseLayerPicker: false,
+                    geocoder: true, // This is the corrected line
+                    creditContainer: document.createElement("div"),
+                    infoBox: false,
+                      selectionIndicator: false
                 });
                 const scene = viewer.scene;
 
@@ -210,3 +214,4 @@
     </script>
 </body>
 </html>
+
