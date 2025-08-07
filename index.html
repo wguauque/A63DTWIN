@@ -7,19 +7,28 @@
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
-    <header>
-        <h1>A63 Digital Twin</h1>
-        <nav>
-            <a href="index.html">Home</a>
+    <header class="main-header">
+        <a href="index.html" class="header-brand">
+            <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="Logo">
+            <span>A63 Digital Twin</span>
+        </a>
+        <nav class="main-nav">
+            <a href="index.html" class="active">Home</a>
             <a href="cesium.html">3D Model</a>
             <a href="dashboard.html">Dashboard</a>
             <a href="map.html">ArcGIS Map</a>
         </nav>
     </header>
-    <main>
-        <h2>Welcome!</h2>
-        <p>This is the landing page for my educational project.</p>
-        <p>Please select one of the components from the navigation menu to begin.</p>
+
+    <main class="page-container">
+        <h1 class="page-title">Welcome to the A63 Digital Twin Platform</h1>
+        <p class="page-subtitle">An educational project integrating geospatial and business intelligence technologies.</p>
+
+        <div class="content-card">
+            <h3>Explore the Platform</h3>
+            <p>This platform combines a detailed 3D model of infrastructure assets, interactive data dashboards, and a feature-rich GIS map. Select a component from the navigation above to begin.</p>
+            <a href="cesium.html" class="button-link">Start with the 3D Model</a>
+        </div>
     </main>
 </body>
 </html>
