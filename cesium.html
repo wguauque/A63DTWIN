@@ -9,54 +9,27 @@
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; overflow: hidden; background-color: #f0f0f0;
-        }
-        #cesiumContainer {
-            position: absolute; top: 0; left: 0; height: 100%; width: 100%; margin: 0; overflow: hidden; padding: 0; background: #000;
-        }
-        #loadingOverlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(30, 30, 30, 0.97); display: flex;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: #ffffff; text-align: center;
-            transition: opacity 0.5s ease-out;
-        }
-        #loadingOverlay h1 { font-size: 1.6em; margin-top: 10px; font-weight: 300; max-width: 80%; }
-        #headerLogos {
-            position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between;
-            padding: 10px 20px; background-color: rgba(255, 255, 255, 0.92); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            z-index: 1001; height: 70px; box-sizing: border-box;
-        }
-        #headerLogos nav { margin-left: auto; margin-right: auto; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; overflow: hidden; }
+        #cesiumContainer { position: absolute; top: 0; left: 0; height: 100%; width: 100%; margin: 0; padding: 0; background: #000; }
+        #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(30, 30, 30, 0.97); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: #ffffff; transition: opacity 0.5s ease-out; }
+        #loadingOverlay h1 { font-size: 1.6em; font-weight: 300; }
+        #headerLogos { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background-color: rgba(255, 255, 255, 0.92); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); z-index: 1001; height: 70px; box-sizing: border-box; }
+        #headerLogos nav { margin: 0 auto; }
         #headerLogos nav a { font-weight: 500; color: #2c3e50; text-decoration: none; padding: 5px 15px; border-radius: 5px; transition: background-color 0.3s; }
         #headerLogos nav a:hover { background-color: #e0e0e0; }
         #logoAtlandes, #logoEelisa { height: 50px; width: auto; }
         .cesium-widget-credits { display: none !important; }
-        
-        /* Toolbar Styling */
-        #toolbar {
-            position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.85); padding: 8px;
-            border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 220px;
-        }
-        #toolbar button {
-            background-color: #444; border: 1px solid #666; color: #fff; padding: 8px 12px; margin: 4px 2px;
-            border-radius: 4px; cursor: pointer; display: block; width: calc(100% - 4px);
-            box-sizing: border-box; text-align: left; transition: background-color 0.2s;
-        }
+        #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.85); padding: 8px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 220px; }
+        #toolbar button { background-color: #444; border: 1px solid #666; color: #fff; padding: 8px 12px; margin: 4px 2px; border-radius: 4px; cursor: pointer; display: block; width: calc(100% - 4px); box-sizing: border-box; text-align: left; transition: background-color 0.2s; }
         #toolbar button:hover { background-color: #555; }
-        .toolbar-group-label {
-            font-weight: bold; font-size: 0.9em; color: #ddd; margin-top: 10px; margin-bottom: 3px;
-            padding-left: 2px; display: block;
-        }
+        .toolbar-group-label { font-weight: bold; font-size: 0.9em; color: #ddd; margin-top: 10px; margin-bottom: 3px; padding-left: 2px; display: block; }
         .toolbar-group-label:first-child { margin-top: 0; }
     </style>
 </head>
 <body>
 
     <div id="cesiumContainer"></div>
-
-    <div id="loadingOverlay">
-        <h1>Loading Digital Twin Environment...</h1>
-    </div>
+    <div id="loadingOverlay"><h1>Loading Digital Twin...</h1></div>
 
     <div id="headerLogos">
         <img src="https://upload.wikimedia.org/wikipedia/fr/a/a0/Logo_Atlandes.svg" alt="Atlandes Logo" id="logoAtlandes">
@@ -77,27 +50,22 @@
     </div>
 
     <script>
-        // --- JAVASCRIPT ---
         async function main() {
             const loadingMessageElement = document.querySelector("#loadingOverlay h1");
             const loadingOverlayElement = document.getElementById("loadingOverlay");
 
             try {
-                // Set your Cesium Ion default access token
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
-
+                
                 const viewer = new Cesium.Viewer("cesiumContainer", {
-                    timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false,
-                    geocoder: true, // Corrected geocoder setting
-                    creditContainer: document.createElement("div"),
-                    infoBox: false, selectionIndicator: false
+                    timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false, geocoder: true,
+                    creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false
                 });
-                window.cesiumViewer = viewer; // Make viewer globally accessible
+                window.cesiumViewer = viewer;
                 const scene = viewer.scene;
 
                 viewer.scene.globe.enableLighting = true;
                 viewer.scene.postProcessStages.fxaa.enabled = true;
-                viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
                 scene.skyAtmosphere.show = true;
 
                 loadingMessageElement.textContent = "Loading Global Terrain...";
@@ -106,26 +74,25 @@
                 loadingMessageElement.textContent = "Loading Project Model...";
                 const myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3385864);
                 viewer.scene.primitives.add(myTileset);
+                window.myTileset = myTileset; // Make tileset globally accessible for the button functions
 
                 myTileset.style = new Cesium.Cesium3DTileStyle({
-                    color: {
-                        conditions: [
-                            ["${name_1} === 'BBSG 0/14'", "color('#A0522D')"], ["${name_1} === 'BBSG'", "color('#A52A2A')"],
-                            ["${name_1} === 'BBSG 0/10 R50'", "color('#CD853F')"], ["${name_1} === 'GNT'", "color('#D2B48C')"],
-                            ["${name_1} === 'GNT 0/31.5'", "color('#BC8F8F')"], ["${name_1} === 'GB'", "color('#C0A080')"],
-                            ["${name_1} === 'GB 0/14 R50'", "color('#D8BFD8')"], ["${name_1} === 'GB 014 OPTIBASE'", "color('#DEB887')"],
-                            ["${name_1} === 'SB'", "color('#B08060')"], ["${name_1} === 'GTLH'", "color('#BDB76B')"],
-                            ["${name_1} === 'geotextile classe 7'", "color('#8FBC8F')"], ["${name_1} === 'BBTM 0/10'", "color('#696969')"],
-                            ["${name_1} === 'BBTM 0/10 R20'", "color('#777777')"], ["${name_1} === 'EME2 0/14R30'", "color('#4F4F4F')"],
-                            ["${name_1} === 'BBME3 R30'", "color('#555555')"], ["${name_1} === 'BBDr 0/10'", "color('#333333')"],
-                            ["${name_1} === 'BB 0/6 acc'", "color('#666666')"], ["${name_1} === 'BB Accoustiq'", "color('#708090')"],
-                            ["${name_1} === 'BBME 0/10R15'", "color('#505050')"], ["${name_1} === 'BBME 0/10 R30'", "color('#585858')"],
-                            ["${name_1} === 'EME 0/14 R30'", "color('#454545')"], ["${name_1} === 'BBME'", "color('#606060')"],
-                            ["${name_1} === 'TAB BET'", "color('#C0C0C0')"], ["${name_1} === 'CBX C30/37'", "color('#A9A9A9')"],
-                            ["${name_1} === 'CBX C25/30'", "color('#B5B5B5')"], ["${name_1} === 'Etanch'", "color('#4682B4')"],
-                            ["${name_1} === 'Autres'", "color('#800080')"], [true, "color('white')"]
-                        ]
-                    }
+                    color: { conditions: [
+                        ["${name_1} === 'BBSG 0/14'", "color('#A0522D')"], ["${name_1} === 'BBSG'", "color('#A52A2A')"],
+                        ["${name_1} === 'BBSG 0/10 R50'", "color('#CD853F')"], ["${name_1} === 'GNT'", "color('#D2B48C')"],
+                        ["${name_1} === 'GNT 0/31.5'", "color('#BC8F8F')"], ["${name_1} === 'GB'", "color('#C0A080')"],
+                        ["${name_1} === 'GB 0/14 R50'", "color('#D8BFD8')"], ["${name_1} === 'GB 014 OPTIBASE'", "color('#DEB887')"],
+                        ["${name_1} === 'SB'", "color('#B08060')"], ["${name_1} === 'GTLH'", "color('#BDB76B')"],
+                        ["${name_1} === 'geotextile classe 7'", "color('#8FBC8F')"], ["${name_1} === 'BBTM 0/10'", "color('#696969')"],
+                        ["${name_1} === 'BBTM 0/10 R20'", "color('#777777')"], ["${name_1} === 'EME2 0/14R30'", "color('#4F4F4F')"],
+                        ["${name_1} === 'BBME3 R30'", "color('#555555')"], ["${name_1} === 'BBDr 0/10'", "color('#333333')"],
+                        ["${name_1} === 'BB 0/6 acc'", "color('#666666')"], ["${name_1} === 'BB Accoustiq'", "color('#708090')"],
+                        ["${name_1} === 'BBME 0/10R15'", "color('#505050')"], ["${name_1} === 'BBME 0/10 R30'", "color('#585858')"],
+                        ["${name_1} === 'EME 0/14 R30'", "color('#454545')"], ["${name_1} === 'BBME'", "color('#606060')"],
+                        ["${name_1} === 'TAB BET'", "color('#C0C0C0')"], ["${name_1} === 'CBX C30/37'", "color('#A9A9A9')"],
+                        ["${name_1} === 'CBX C25/30'", "color('#B5B5B5')"], ["${name_1} === 'Etanch'", "color('#4682B4')"],
+                        ["${name_1} === 'Autres'", "color('#800080')"], [true, "color('white')"]
+                    ] }
                 });
 
                 loadingMessageElement.textContent = "Positioning Camera...";
@@ -137,47 +104,15 @@
                     });
                 }
 
-                loadingOverlayElement.style.opacity = "0";
-                setTimeout(() => { loadingOverlayElement.style.display = "none"; }, 500);
+                // --- INTERACTIVE DRAWING LOGIC (THIS WAS MISSING) ---
+                const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+                let activeShapePoints = [];
+                let activeShape;
+                let floatingPoint;
 
-            } catch (error) {
-                console.error("Critical error during Cesium setup:", error);
-                loadingMessageElement.textContent = `Application Error: ${error.message || 'An unknown error occurred.'}`;
-                loadingMessageElement.style.color = "#ffdddd";
-            }
-        }
-
-        function connectToolbarButtons() {
-            const viewer = window.cesiumViewer;
-            if (!viewer) {
-                console.error("Cesium Viewer not found.");
-                return;
-            }
-            // Find the tileset in the viewer's primitives. This assumes it's the only one or the last one added.
-            const myTileset = viewer.scene.primitives.get(viewer.scene.primitives.length - 1);
-            if (!myTileset || !myTileset.clippingPolygons) {
-                console.error("Clipping-enabled tileset not found.");
-                return;
-            }
-
-            document.getElementById('enableClipBtn').addEventListener('click', () => {
-                myTileset.clippingPolygons.enabled = !myTileset.clippingPolygons.enabled;
-            });
-
-            document.getElementById('inverseClipBtn').addEventListener('click', () => {
-                myTileset.clippingPolygons.inverse = !myTileset.clippingPolygons.inverse;
-            });
-
-            document.getElementById('removeClipBtn').addEventListener('click', () => {
-                if (myTileset.clippingPolygons.length > 0) {
-                    myTileset.clippingPolygons.remove(myTileset.clippingPolygons.get(myTileset.clippingPolygons.length - 1));
-                }
-            });
-        }
-
-        // Run the main Cesium setup, then connect the buttons.
-        main();
-        connectToolbarButtons();
-    </script>
-</body>
-</html>
+                handler.setInputAction(function (event) {
+                    const earthPosition = scene.pickPosition(event.position);
+                    if (Cesium.defined(earthPosition)) {
+                        if (activeShapePoints.length === 0) {
+                            floatingPoint = viewer.entities.add({ position: earthPosition, point: { color: Cesium.Color.ORANGERED, pixelSize: 8 } });
+                            activeShapePoints.push
