@@ -50,6 +50,69 @@ body {
     height: 32px;
 }
 
+/* 5. ArcGIS Map Specific Styles */
+#viewDiv {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+}
+
+#controlsDiv {
+    position: absolute;
+    top: calc(70px + 15px); /* Position below sticky header */
+    left: 15px;
+    background: var(--card-bg);
+    padding: 1rem;
+    z-index: 50; /* Below header but above map */
+    box-shadow: var(--shadow-md);
+    border-radius: 12px;
+    width: 280px;
+    border: 1px solid var(--border-color);
+}
+
+#controlsDiv label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    margin-top: 0.75rem;
+}
+
+#controlsDiv select,
+#controlsDiv input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+#controlsDiv #editDiv {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+#controlsDiv #searchResults {
+    margin-top: 5px;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+#controlsDiv #searchResults div {
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+#controlsDiv #searchResults div:hover {
+    background-color: #f0f4f8;
+}
+
 .main-nav a {
     color: var(--text-secondary);
     text-decoration: none;
@@ -138,3 +201,4 @@ body {
 
 .component-wrapper {
     position: fixed;
+
