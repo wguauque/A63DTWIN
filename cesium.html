@@ -9,7 +9,6 @@
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 
     <style>
-        /* Your CSS from the original file goes here */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; overflow: hidden; background-color: #f0f0f0;
         }
@@ -27,13 +26,28 @@
             padding: 10px 20px; background-color: rgba(255, 255, 255, 0.92); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
             z-index: 1001; height: 70px; box-sizing: border-box;
         }
-        /* Added nav styling */
         #headerLogos nav { margin-left: auto; margin-right: auto; }
         #headerLogos nav a { font-weight: 500; color: #2c3e50; text-decoration: none; padding: 5px 15px; border-radius: 5px; transition: background-color 0.3s; }
         #headerLogos nav a:hover { background-color: #e0e0e0; }
         #logoAtlandes, #logoEelisa { height: 50px; width: auto; }
-        #projectTitle { font-size: 1.5em; font-weight: 500; color: #2c3e50; margin: 0; text-align: center; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cesium-widget-credits { display: none !important; } /* Hiding credits as they are in the header images */
+        .cesium-widget-credits { display: none !important; }
+        
+        /* Toolbar Styling */
+        #toolbar {
+            position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.85); padding: 8px;
+            border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 220px;
+        }
+        #toolbar button {
+            background-color: #444; border: 1px solid #666; color: #fff; padding: 8px 12px; margin: 4px 2px;
+            border-radius: 4px; cursor: pointer; display: block; width: calc(100% - 4px);
+            box-sizing: border-box; text-align: left; transition: background-color 0.2s;
+        }
+        #toolbar button:hover { background-color: #555; }
+        .toolbar-group-label {
+            font-weight: bold; font-size: 0.9em; color: #ddd; margin-top: 10px; margin-bottom: 3px;
+            padding-left: 2px; display: block;
+        }
+        .toolbar-group-label:first-child { margin-top: 0; }
     </style>
 </head>
 <body>
@@ -55,49 +69,39 @@
         <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Digital Twins Logo" id="logoEelisa">
     </div>
 
-    <div id="toolbar"></div>
+    <div id="toolbar">
+        <span class="toolbar-group-label">Clipping Tools</span>
+        <button id="enableClipBtn">Enable/Disable Clipping</button>
+        <button id="inverseClipBtn">Inverse Clipping</button>
+        <button id="removeClipBtn">Remove Last Polygon</button>
+    </div>
 
     <script>
-        // --- YOUR JAVASCRIPT CODE ---
-        // Set your Cesium Ion default access token
-        Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
-
+        // --- JAVASCRIPT ---
         async function main() {
             const loadingMessageElement = document.querySelector("#loadingOverlay h1");
             const loadingOverlayElement = document.getElementById("loadingOverlay");
 
             try {
+                // Set your Cesium Ion default access token
+                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
+
                 const viewer = new Cesium.Viewer("cesiumContainer", {
-                    timeline: false,
-                    animation: false,
-                    sceneModePicker: false,
-                    baseLayerPicker: false,
-                    geocoder: true, // This is the corrected line
+                    timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false,
+                    geocoder: true, // Corrected geocoder setting
                     creditContainer: document.createElement("div"),
-                    infoBox: false,
-                      selectionIndicator: false
+                    infoBox: false, selectionIndicator: false
                 });
+                window.cesiumViewer = viewer; // Make viewer globally accessible
                 const scene = viewer.scene;
 
                 viewer.scene.globe.enableLighting = true;
                 viewer.scene.postProcessStages.fxaa.enabled = true;
-
-                viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
                 viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
-
                 scene.skyAtmosphere.show = true;
 
-                // --- Asset Loading ---
                 loadingMessageElement.textContent = "Loading Global Terrain...";
-                await Cesium.createWorldTerrainAsync().then(terrain => { scene.terrainProvider = terrain; scene.globe.show = true; });
-
-                let worldTileset;
-                try {
-                    loadingMessageElement.textContent = "Loading Photorealistic 3D Tiles...";
-                    worldTileset = await Cesium.createGooglePhotorealistic3DTileset({ onlyUsingWithGoogleGeocoder: true });
-                    scene.primitives.add(worldTileset);
-                    worldTileset.show = false;
-                } catch (error) { console.warn(`Could not load Photorealistic 3D Tiles: ${error}`); }
+                await Cesium.createWorldTerrainAsync().then(terrain => { scene.terrainProvider = terrain; });
 
                 loadingMessageElement.textContent = "Loading Project Model...";
                 const myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3385864);
@@ -127,79 +131,12 @@
                 loadingMessageElement.textContent = "Positioning Camera...";
                 await viewer.zoomTo(myTileset);
 
-                // --- Interactive Clipping Polygon Drawing Logic ---
-                let activeShapePoints = [];
-                let activeShape;
-                let floatingPoint;
-                let drawnPointsEntities = [];
-                const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
-
-                function createDrawingPoint(worldPosition) {
-                    const point = viewer.entities.add({
-                        position: worldPosition,
-                        point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1, disableDepthTestDistance: Number.POSITIVE_INFINITY },
-                    });
-                    drawnPointsEntities.push(point);
-                    return point;
-                }
-
-                function drawInteractiveShape(positionData) {
-                    return viewer.entities.add({
-                        polygon: { hierarchy: positionData, material: Cesium.Color.ORANGERED.withAlpha(0.4), outline: true, outlineColor: Cesium.Color.ORANGERED, outlineWidth: 2 },
-                    });
-                }
-
-                handler.setInputAction(function (event) {
-                    const earthPosition = scene.pickPosition(event.position);
-                    if (Cesium.defined(earthPosition)) {
-                        if (activeShapePoints.length === 0) {
-                            floatingPoint = createDrawingPoint(earthPosition.clone());
-                            activeShapePoints.push(earthPosition.clone());
-                            const dynamicPositions = new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(activeShapePoints), false);
-                            activeShape = drawInteractiveShape(dynamicPositions);
-                        }
-                        activeShapePoints.push(earthPosition.clone());
-                        createDrawingPoint(earthPosition.clone());
-                    }
-                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-                handler.setInputAction(function (event) {
-                    if (Cesium.defined(floatingPoint)) {
-                        const newPosition = scene.pickPosition(event.endPosition);
-                        if (Cesium.defined(newPosition)) {
-                            floatingPoint.position.setValue(newPosition);
-                            if (activeShapePoints.length > 0) activeShapePoints.pop();
-                            activeShapePoints.push(newPosition);
-                        }
-                    }
-                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
-                
-                // This part of the logic was missing from your original code. It is needed to create the clipping polygon.
                 if (Cesium.defined(myTileset)) {
                     myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
                         edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
                     });
                 }
 
-                function finalizeClippingPolygon(positions) {
-                    if (positions.length < 3) return;
-                    if (myTileset?.clippingPolygons) {
-                         const newClippingPolygon = new Cesium.ClippingPolygon({ positions: positions });
-                         myTileset.clippingPolygons.add(newClippingPolygon);
-                    }
-                }
-
-                function terminateShapeDrawing() {
-                    if (activeShapePoints.length > 0) activeShapePoints.pop();
-                    if (activeShapePoints.length >= 3) { finalizeClippingPolygon(activeShapePoints); }
-                    viewer.entities.remove(floatingPoint);
-                    viewer.entities.remove(activeShape);
-                    drawnPointsEntities.forEach(entity => viewer.entities.remove(entity));
-                    floatingPoint = undefined; activeShape = undefined; activeShapePoints = []; drawnPointsEntities = [];
-                }
-                handler.setInputAction(terminateShapeDrawing, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
-
-                // --- All assets loaded: Hide loading overlay ---
                 loadingOverlayElement.style.opacity = "0";
                 setTimeout(() => { loadingOverlayElement.style.display = "none"; }, 500);
 
@@ -210,8 +147,37 @@
             }
         }
 
+        function connectToolbarButtons() {
+            const viewer = window.cesiumViewer;
+            if (!viewer) {
+                console.error("Cesium Viewer not found.");
+                return;
+            }
+            // Find the tileset in the viewer's primitives. This assumes it's the only one or the last one added.
+            const myTileset = viewer.scene.primitives.get(viewer.scene.primitives.length - 1);
+            if (!myTileset || !myTileset.clippingPolygons) {
+                console.error("Clipping-enabled tileset not found.");
+                return;
+            }
+
+            document.getElementById('enableClipBtn').addEventListener('click', () => {
+                myTileset.clippingPolygons.enabled = !myTileset.clippingPolygons.enabled;
+            });
+
+            document.getElementById('inverseClipBtn').addEventListener('click', () => {
+                myTileset.clippingPolygons.inverse = !myTileset.clippingPolygons.inverse;
+            });
+
+            document.getElementById('removeClipBtn').addEventListener('click', () => {
+                if (myTileset.clippingPolygons.length > 0) {
+                    myTileset.clippingPolygons.remove(myTileset.clippingPolygons.get(myTileset.clippingPolygons.length - 1));
+                }
+            });
+        }
+
+        // Run the main Cesium setup, then connect the buttons.
         main();
+        connectToolbarButtons();
     </script>
 </body>
 </html>
-
