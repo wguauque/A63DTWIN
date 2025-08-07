@@ -32,7 +32,6 @@
         #logoAtlandes, #logoEelisa { height: 50px; width: auto; }
         .cesium-widget-credits { display: none !important; }
         
-        /* Toolbar Styling */
         #toolbar {
             position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.85); padding: 8px;
             border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 220px;
@@ -77,22 +76,20 @@
     </div>
 
     <script>
-        // --- JAVASCRIPT ---
         async function main() {
             const loadingMessageElement = document.querySelector("#loadingOverlay h1");
             const loadingOverlayElement = document.getElementById("loadingOverlay");
 
             try {
-                // Set your Cesium Ion default access token
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
 
                 const viewer = new Cesium.Viewer("cesiumContainer", {
                     timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false,
-                    geocoder: true, // Corrected geocoder setting
+                    geocoder: true,
                     creditContainer: document.createElement("div"),
                     infoBox: false, selectionIndicator: false
                 });
-                window.cesiumViewer = viewer; // Make viewer globally accessible
+                window.cesiumViewer = viewer; // Global viewer
                 const scene = viewer.scene;
 
                 viewer.scene.globe.enableLighting = true;
@@ -135,66 +132,62 @@
                     myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
                         edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
                     });
-
-// --- Interactive Clipping Polygon Drawing Logic ---
-const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
-let activeShapePoints = [];
-let activeShape;
-let floatingPoint;
-
-// Draws the points as you click
-handler.setInputAction(function (event) {
-    const earthPosition = scene.pickPosition(event.position);
-    if (Cesium.defined(earthPosition)) {
-        if (activeShapePoints.length === 0) {
-            floatingPoint = viewer.entities.add({
-                position: earthPosition,
-                point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
-            });
-            activeShapePoints.push(earthPosition);
-            const dynamicPositions = new Cesium.CallbackProperty(function () {
-                return new Cesium.PolygonHierarchy(activeShapePoints);
-            }, false);
-            activeShape = viewer.entities.add({
-                polygon: {
-                    hierarchy: dynamicPositions,
-                    material: new Cesium.ColorMaterialProperty(Cesium.Color.ORANGERED.withAlpha(0.7)),
-                },
-            });
-        }
-        activeShapePoints.push(earthPosition);
-    }
-}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-// Draws the line as you move the mouse
-handler.setInputAction(function (event) {
-    if (Cesium.defined(floatingPoint)) {
-        const newPosition = scene.pickPosition(event.endPosition);
-        if (Cesium.defined(newPosition)) {
-            floatingPoint.position.setValue(newPosition);
-            activeShapePoints.pop();
-            activeShapePoints.push(newPosition);
-        }
-    }
-}, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
-
-// Finishes the shape on right-click
-handler.setInputAction(function () {
-    if (activeShapePoints.length > 2) {
-        const finalPoints = activeShapePoints.slice(0, -1);
-        if (myTileset?.clippingPolygons) {
-             const newClippingPolygon = new Cesium.ClippingPolygon({ positions: finalPoints });
-             myTileset.clippingPolygons.add(newClippingPolygon);
-        }
-    }
-    // Clean up entities
-    viewer.entities.remove(floatingPoint);
-    viewer.entities.remove(activeShape);
-    floatingPoint = undefined;
-    activeShape = undefined;
-    activeShapePoints = [];
-}, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
                 }
+                
+                // Clipping Logic
+                const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+                let activeShapePoints = [];
+                let activeShape;
+                let floatingPoint;
+
+                handler.setInputAction(function (event) {
+                    const earthPosition = scene.pickPosition(event.position);
+                    if (Cesium.defined(earthPosition)) {
+                        if (activeShapePoints.length === 0) {
+                            floatingPoint = viewer.entities.add({
+                                position: earthPosition,
+                                point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
+                            });
+                            activeShapePoints.push(earthPosition);
+                            const dynamicPositions = new Cesium.CallbackProperty(function () {
+                                return new Cesium.PolygonHierarchy(activeShapePoints);
+                            }, false);
+                            activeShape = viewer.entities.add({
+                                polygon: {
+                                    hierarchy: dynamicPositions,
+                                    material: new Cesium.ColorMaterialProperty(Cesium.Color.ORANGERED.withAlpha(0.7)),
+                                },
+                            });
+                        }
+                        activeShapePoints.push(earthPosition);
+                    }
+                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+                handler.setInputAction(function (event) {
+                    if (Cesium.defined(floatingPoint)) {
+                        const newPosition = scene.pickPosition(event.endPosition);
+                        if (Cesium.defined(newPosition)) {
+                            floatingPoint.position.setValue(newPosition);
+                            activeShapePoints.pop();
+                            activeShapePoints.push(newPosition);
+                        }
+                    }
+                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+                handler.setInputAction(function () {
+                    if (activeShapePoints.length > 2) {
+                        const finalPoints = activeShapePoints.slice(0, -1);
+                        if (myTileset?.clippingPolygons) {
+                            const newClippingPolygon = new Cesium.ClippingPolygon({ positions: finalPoints });
+                            myTileset.clippingPolygons.add(newClippingPolygon);
+                        }
+                    }
+                    viewer.entities.remove(floatingPoint);
+                    viewer.entities.remove(activeShape);
+                    floatingPoint = undefined;
+                    activeShape = undefined;
+                    activeShapePoints = [];
+                }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
                 loadingOverlayElement.style.opacity = "0";
                 setTimeout(() => { loadingOverlayElement.style.display = "none"; }, 500);
@@ -212,7 +205,6 @@ handler.setInputAction(function () {
                 console.error("Cesium Viewer not found.");
                 return;
             }
-            // Find the tileset in the viewer's primitives. This assumes it's the only one or the last one added.
             const myTileset = viewer.scene.primitives.get(viewer.scene.primitives.length - 1);
             if (!myTileset || !myTileset.clippingPolygons) {
                 console.error("Clipping-enabled tileset not found.");
@@ -233,11 +225,10 @@ handler.setInputAction(function () {
                 }
             });
         }
-
-        // Run the main Cesium setup, then connect the buttons.
+        
+        // Run
         main();
         connectToolbarButtons();
     </script>
 </body>
 </html>
-
