@@ -127,15 +127,13 @@ body {
 
 /* Components */
 .component-container {
-    width: 100%;
     height: calc(100vh - 70px);
-    margin-top: 70px;
-    border: none;
-    display: block;
 }
 
-.component-wrapper {
-    position: fixed;
+.powerbi-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
 }
 
 /* ArcGIS Map */
