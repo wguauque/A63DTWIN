@@ -200,8 +200,8 @@
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
-                // IMPORTANT: This is your personal access token.
-                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxZTgxOWFhZS1mZTcxLTQzMWYtOTA1Yi02YjYxODkwZDMxNWIiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDMwODY5NzR9.DLaN5FcVhNc_fc35YpFKzoHr3_q6tuEqf6jK-guXolI";
+                // IMPORTANT: Using the new access token you provided.
+                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
 
                 const viewer = new Cesium.Viewer("cesiumContainer", { timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false, geocoder: true, creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false });
                 viewer.scene.globe.enableLighting = true;
