@@ -131,16 +131,22 @@
         async function zoomToFeature(prValue) {
             if (!myTileset || !viewer || !prValue) return;
 
-            // Temporarily apply a style that shows ONLY the selected feature.
+            const prNumber = Number(prValue);
+            if (isNaN(prNumber)) return;
+
+            const lowerBound = prNumber - 500;
+            const upperBound = prNumber + 500;
+
+            // Temporarily apply a style that shows ONLY features within the desired PR range.
             const zoomStyle = new Cesium.Cesium3DTileStyle({
-                show: `getProperty('excelLayerInfoPR_1') === '${prValue}'`
+                show: `Number(getProperty('excelLayerInfoPR_1')) >= ${lowerBound} && Number(getProperty('excelLayerInfoPR_1')) < ${upperBound}`
             });
             myTileset.style = zoomStyle;
 
             try {
-                // Zoom to the tileset. Because only one feature is visible,
-                // the camera will focus on it.
-                await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, -0.5, myTileset.boundingSphere.radius * 1.5));
+                // Zoom to the tileset. Because only features in the range are visible,
+                // the camera will focus on that area.
+                await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, -0.5, myTileset.boundingSphere.radius * 2.0));
             } catch (error) {
                 console.error("Error during zoomTo operation:", error);
             } finally {
