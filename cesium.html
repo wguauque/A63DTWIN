@@ -5,51 +5,88 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
     <title>A63 Digital Twin - 3D Model</title>
+    
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
-
+    
+    <link href="main.css" rel="stylesheet">
+    
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; overflow: hidden; background-color: #f0f0f0;
+            overflow: hidden; /* Prevent scrolling on the 3D view page */
         }
         #cesiumContainer {
-            position: absolute; top: 0; left: 0; height: 100%; width: 100%; margin: 0; overflow: hidden; padding: 0; background: #000;
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
         }
         #loadingOverlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(30, 30, 30, 0.97); display: flex;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: #ffffff; text-align: center;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(30, 30, 30, 0.97);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999; color: #ffffff; text-align: center;
             transition: opacity 0.5s ease-out;
         }
-        #loadingOverlay h1 { font-size: 1.6em; margin-top: 10px; font-weight: 300; max-width: 80%; }
-        #headerLogos {
-            position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between;
-            padding: 10px 20px; background-color: rgba(255, 255, 255, 0.92); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            z-index: 1001; height: 70px; box-sizing: border-box;
-        }
-        #headerLogos nav { margin-left: auto; margin-right: auto; }
-        #headerLogos nav a { font-weight: 500; color: #2c3e50; text-decoration: none; padding: 5px 15px; border-radius: 5px; transition: background-color 0.3s; }
-        #headerLogos nav a:hover { background-color: #e0e0e0; }
-        #logoAtlandes, #logoEelisa { height: 50px; width: auto; }
+        #loadingOverlay h1 { font-size: 1.6em; margin-top: 10px; font-weight: 300; }
         .cesium-widget-credits { display: none !important; }
-        
-        #toolbar {
-            position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.85); padding: 8px;
-            border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 220px;
+
+        /* Style adjustments for the combined control panel */
+        #controlsDiv .control-group {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
         }
-        #toolbar button {
-            background-color: #444; border: 1px solid #666; color: #fff; padding: 8px 12px; margin: 4px 2px;
-            border-radius: 4px; cursor: pointer; display: block; width: calc(100% - 4px);
-            box-sizing: border-box; text-align: left; transition: background-color 0.2s;
+        #controlsDiv .control-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
         }
-        #toolbar button:hover { background-color: #555; }
-        .toolbar-group-label {
-            font-weight: bold; font-size: 0.9em; color: #ddd; margin-top: 10px; margin-bottom: 3px;
-            padding-left: 2px; display: block;
+        #controlsDiv h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: var(--text-primary);
         }
-        .toolbar-group-label:first-child { margin-top: 0; }
+        #controlsDiv .input-row {
+            display: flex;
+            gap: 10px;
+        }
+        #controlsDiv button {
+            width: 100%;
+            padding: 0.6rem;
+            margin-top: 0.5rem;
+            background-color: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #controlsDiv button:hover {
+            background-color: #e2e8f0;
+        }
+        #controlsDiv .btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+        }
     </style>
 </head>
 <body>
+
+    <header class="main-header">
+        <a href="index.html" class="header-brand">
+            <img src="atlandes.jpg" alt="Atlandes Logo">
+            <span>A63 Digital Twin</span>
+        </a>
+        <nav class="main-nav">
+            <a href="index.html">Home</a>
+            <a href="cesium.html" class="active">3D Model</a>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="map.html">ArcGIS Map</a>
+        </nav>
+    </header>
 
     <div id="cesiumContainer"></div>
 
@@ -57,177 +94,161 @@
         <h1>Loading Digital Twin Environment...</h1>
     </div>
 
-    <div id="headerLogos">
-        <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes"> <nav>
-            <a href="index.html">Home</a>
-            <a href="cesium.html">3D Model</a>
-            <a href="dashboard.html">Dashboard</a>
-            <a href="map.html">ArcGIS Map</a>
-        </nav>
-        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Digital Twins Logo" id="logoEelisa">
-    </div>
+    <div id="controlsDiv">
+        <div class="control-group">
+            <h3>Layer Filters</h3>
+            <label for="type-couche-filter">Layer Type (TYPE_COUCHE)</label>
+            <select id="type-couche-filter">
+                <option value="">All Types</option>
+                <option value="BBSG">BBSG</option>
+                <option value="GNT">GNT</option>
+            </select>
+            <label for="entreprise-filter">Company (ENTREPRISE)</label>
+            <select id="entreprise-filter">
+                <option value="">All Companies</option>
+                <option value="Colas">Colas</option>
+                <option value="Eurovia">Eurovia</option>
+            </select>
+            <label>PR Range (PR_1 to PR_2)</label>
+            <div class="input-row">
+                <input type="number" id="pr1-filter" placeholder="Min">
+                <input type="number" id="pr2-filter" placeholder="Max">
+            </div>
+            <button id="apply-filters-btn" class="btn-primary" style="margin-top: 1rem;">Apply Filters</button>
+            <button id="reset-filters-btn">Reset</button>
+        </div>
 
-    <div id="toolbar">
-        <span class="toolbar-group-label">Clipping Tools</span>
-        <button id="enableClipBtn">Enable/Disable Clipping</button>
-        <button id="inverseClipBtn">Inverse Clipping</button>
-        <button id="removeClipBtn">Remove Last Polygon</button>
+        <div class="control-group">
+            <h3>Clipping Tools</h3>
+            <button id="enableClipBtn">Enable/Disable Clipping</button>
+            <button id="inverseClipBtn">Inverse Clipping</button>
+            <button id="removeClipBtn">Remove Last Polygon</button>
+        </div>
     </div>
 
     <script>
-        async function main() {
-            const loadingMessageElement = document.querySelector("#loadingOverlay h1");
-            const loadingOverlayElement = document.getElementById("loadingOverlay");
+        // --- GLOBAL VARIABLES ---
+        let cesiumViewer;
+        let mainTileset;
 
+        async function setupCesium() {
+            const loadingOverlay = document.getElementById("loadingOverlay");
             try {
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
-
-                const viewer = new Cesium.Viewer("cesiumContainer", {
+                cesiumViewer = new Cesium.Viewer("cesiumContainer", {
                     timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false,
-                    geocoder: true,
-                    creditContainer: document.createElement("div"),
+                    geocoder: true, creditContainer: document.createElement("div"),
                     infoBox: false, selectionIndicator: false
                 });
-                window.cesiumViewer = viewer; // Global viewer
-                const scene = viewer.scene;
 
-                viewer.scene.globe.enableLighting = true;
-                viewer.scene.postProcessStages.fxaa.enabled = true;
-                viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
-                scene.skyAtmosphere.show = true;
+                cesiumViewer.scene.globe.enableLighting = true;
+                await Cesium.createWorldTerrainAsync().then(terrain => { cesiumViewer.scene.terrainProvider = terrain; });
 
-                loadingMessageElement.textContent = "Loading Global Terrain...";
-                await Cesium.createWorldTerrainAsync().then(terrain => { scene.terrainProvider = terrain; });
+                mainTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3385864);
+                cesiumViewer.scene.primitives.add(mainTileset);
+                await cesiumViewer.zoomTo(mainTileset);
 
-                loadingMessageElement.textContent = "Loading Project Model...";
-                const myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3385864);
-                viewer.scene.primitives.add(myTileset);
-
-                myTileset.style = new Cesium.Cesium3DTileStyle({
-                    color: {
-                        conditions: [
-                            ["${name_1} === 'BBSG 0/14'", "color('#A0522D')"], ["${name_1} === 'BBSG'", "color('#A52A2A')"],
-                            ["${name_1} === 'BBSG 0/10 R50'", "color('#CD853F')"], ["${name_1} === 'GNT'", "color('#D2B48C')"],
-                            ["${name_1} === 'GNT 0/31.5'", "color('#BC8F8F')"], ["${name_1} === 'GB'", "color('#C0A080')"],
-                            ["${name_1} === 'GB 0/14 R50'", "color('#D8BFD8')"], ["${name_1} === 'GB 014 OPTIBASE'", "color('#DEB887')"],
-                            ["${name_1} === 'SB'", "color('#B08060')"], ["${name_1} === 'GTLH'", "color('#BDB76B')"],
-                            ["${name_1} === 'geotextile classe 7'", "color('#8FBC8F')"], ["${name_1} === 'BBTM 0/10'", "color('#696969')"],
-                            ["${name_1} === 'BBTM 0/10 R20'", "color('#777777')"], ["${name_1} === 'EME2 0/14R30'", "color('#4F4F4F')"],
-                            ["${name_1} === 'BBME3 R30'", "color('#555555')"], ["${name_1} === 'BBDr 0/10'", "color('#333333')"],
-                            ["${name_1} === 'BB 0/6 acc'", "color('#666666')"], ["${name_1} === 'BB Accoustiq'", "color('#708090')"],
-                            ["${name_1} === 'BBME 0/10R15'", "color('#505050')"], ["${name_1} === 'BBME 0/10 R30'", "color('#585858')"],
-                            ["${name_1} === 'EME 0/14 R30'", "color('#454545')"], ["${name_1} === 'BBME'", "color('#606060')"],
-                            ["${name_1} === 'TAB BET'", "color('#C0C0C0')"], ["${name_1} === 'CBX C30/37'", "color('#A9A9A9')"],
-                            ["${name_1} === 'CBX C25/30'", "color('#B5B5B5')"], ["${name_1} === 'Etanch'", "color('#4682B4')"],
-                            ["${name_1} === 'Autres'", "color('#800080')"], [true, "color('white')"]
-                        ]
-                    }
+                mainTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
+                    edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
                 });
 
-                loadingMessageElement.textContent = "Positioning Camera...";
-                await viewer.zoomTo(myTileset);
-
-                if (Cesium.defined(myTileset)) {
-                    myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
-                        edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
-                    });
-                }
-                
-                // Clipping Logic
-                const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
-                let activeShapePoints = [];
-                let activeShape;
-                let floatingPoint;
-
-                handler.setInputAction(function (event) {
-                    const earthPosition = scene.pickPosition(event.position);
-                    if (Cesium.defined(earthPosition)) {
-                        if (activeShapePoints.length === 0) {
-                            floatingPoint = viewer.entities.add({
-                                position: earthPosition,
-                                point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
-                            });
-                            activeShapePoints.push(earthPosition);
-                            const dynamicPositions = new Cesium.CallbackProperty(function () {
-                                return new Cesium.PolygonHierarchy(activeShapePoints);
-                            }, false);
-                            activeShape = viewer.entities.add({
-                                polygon: {
-                                    hierarchy: dynamicPositions,
-                                    material: new Cesium.ColorMaterialProperty(Cesium.Color.ORANGERED.withAlpha(0.7)),
-                                },
-                            });
-                        }
-                        activeShapePoints.push(earthPosition);
-                    }
-                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-                handler.setInputAction(function (event) {
-                    if (Cesium.defined(floatingPoint)) {
-                        const newPosition = scene.pickPosition(event.endPosition);
-                        if (Cesium.defined(newPosition)) {
-                            floatingPoint.position.setValue(newPosition);
-                            activeShapePoints.pop();
-                            activeShapePoints.push(newPosition);
-                        }
-                    }
-                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
-
-                handler.setInputAction(function () {
-                    if (activeShapePoints.length > 2) {
-                        const finalPoints = activeShapePoints.slice(0, -1);
-                        if (myTileset?.clippingPolygons) {
-                            const newClippingPolygon = new Cesium.ClippingPolygon({ positions: finalPoints });
-                            myTileset.clippingPolygons.add(newClippingPolygon);
-                        }
-                    }
-                    viewer.entities.remove(floatingPoint);
-                    viewer.entities.remove(activeShape);
-                    floatingPoint = undefined;
-                    activeShape = undefined;
-                    activeShapePoints = [];
-                }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
-
-                loadingOverlayElement.style.opacity = "0";
-                setTimeout(() => { loadingOverlayElement.style.display = "none"; }, 500);
+                loadingOverlay.style.opacity = "0";
+                setTimeout(() => { loadingOverlay.style.display = "none"; }, 500);
 
             } catch (error) {
-                console.error("Critical error during Cesium setup:", error);
-                loadingMessageElement.textContent = `Application Error: ${error.message || 'An unknown error occurred.'}`;
-                loadingMessageElement.style.color = "#ffdddd";
+                console.error("Cesium setup failed:", error);
+                loadingOverlay.querySelector("h1").textContent = `Error: ${error.message}`;
             }
         }
 
-        function connectToolbarButtons() {
-            const viewer = window.cesiumViewer;
-            if (!viewer) {
-                console.error("Cesium Viewer not found.");
-                return;
-            }
-            const myTileset = viewer.scene.primitives.get(viewer.scene.primitives.length - 1);
-            if (!myTileset || !myTileset.clippingPolygons) {
-                console.error("Clipping-enabled tileset not found.");
-                return;
-            }
+        function setupClippingTools() {
+            const handler = new Cesium.ScreenSpaceEventHandler(cesiumViewer.canvas);
+            let activeShapePoints = [];
+            let activeShape;
+            let floatingPoint;
 
-            document.getElementById('enableClipBtn').addEventListener('click', () => {
-                myTileset.clippingPolygons.enabled = !myTileset.clippingPolygons.enabled;
-            });
+            handler.setInputAction(event => {
+                const earthPosition = cesiumViewer.scene.pickPosition(event.position);
+                if (Cesium.defined(earthPosition)) {
+                    if (activeShapePoints.length === 0) {
+                        floatingPoint = cesiumViewer.entities.add({ position: earthPosition, point: { color: Cesium.Color.ORANGERED, pixelSize: 8 } });
+                        activeShapePoints.push(earthPosition);
+                        const dynamicPositions = new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(activeShapePoints), false);
+                        activeShape = cesiumViewer.entities.add({ polygon: { hierarchy: dynamicPositions, material: Cesium.Color.ORANGERED.withAlpha(0.7) } });
+                    }
+                    activeShapePoints.push(earthPosition);
+                }
+            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-            document.getElementById('inverseClipBtn').addEventListener('click', () => {
-                myTileset.clippingPolygons.inverse = !myTileset.clJust make sure the `atlandes.jpg` file is in the same folder as this HTML file.ogons.inverse;
-            });
+            handler.setInputAction(event => {
+                if (Cesium.defined(floatingPoint)) {
+                    const newPosition = cesiumViewer.scene.pickPosition(event.endPosition);
+                    if (Cesium.defined(newPosition)) {
+                        floatingPoint.position.setValue(newPosition);
+                        activeShapePoints.pop();
+                        activeShapePoints.push(newPosition);
+                    }
+                }
+            }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
+            handler.setInputAction(() => {
+                if (activeShapePoints.length > 2) {
+                    const finalPoints = activeShapePoints.slice(0, -1);
+                    if (mainTileset?.clippingPolygons) {
+                        mainTileset.clippingPolygons.add(new Cesium.ClippingPolygon({ positions: finalPoints }));
+                    }
+                }
+                cesiumViewer.entities.removeAll();
+                activeShapePoints = [];
+            }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+
+            document.getElementById('enableClipBtn').addEventListener('click', () => mainTileset.clippingPolygons.enabled = !mainTileset.clippingPolygons.enabled);
+            document.getElementById('inverseClipBtn').addEventListener('click', () => mainTileset.clippingPolygons.inverse = !mainTileset.clippingPolygons.inverse);
             document.getElementById('removeClipBtn').addEventListener('click', () => {
-                if (myTileset.clippingPolygons.length > 0) {
-                    myTileset.clippingPolygons.remove(myTileset.clippingPolygons.get(myTileset.clippingPolygons.length - 1));
+                if (mainTileset.clippingPolygons.length > 0) {
+                    mainTileset.clippingPolygons.remove(mainTileset.clippingPolygons.get(mainTileset.clippingPolygons.length - 1));
                 }
             });
         }
-        
-        // Run
-        main();
-        connectToolbarButtons();
+
+        function setupFilterPanel() {
+            const applyBtn = document.getElementById('apply-filters-btn');
+            const resetBtn = document.getElementById('reset-filters-btn');
+
+            applyBtn.addEventListener('click', () => {
+                const filters = {
+                    typeCouche: document.getElementById('type-couche-filter').value,
+                    entreprise: document.getElementById('entreprise-filter').value,
+                    pr_start: document.getElementById('pr1-filter').value,
+                    pr_end: document.getElementById('pr2-filter').value
+                };
+                console.log('Applying filters:', filters);
+                
+                // This is where you would build a new Cesium3DTileStyle condition string
+                // based on the filter values and apply it to mainTileset.style
+                alert('Filter logic is not yet implemented. Check the console for values.');
+            });
+
+            resetBtn.addEventListener('click', () => {
+                document.getElementById('type-couche-filter').selectedIndex = 0;
+                document.getElementById('entreprise-filter').selectedIndex = 0;
+                document.getElementById('pr1-filter').value = '';
+                document.getElementById('pr2-filter').value = '';
+                console.log('Filters reset.');
+                // Here you would reset the tileset style: mainTileset.style = new Cesium.Cesium3DTileStyle();
+            });
+        }
+
+        // --- INITIALIZE THE APPLICATION ---
+        async function initializeApp() {
+            await setupCesium();
+            if (cesiumViewer && mainTileset) {
+                setupClippingTools();
+                setupFilterPanel();
+            }
+        }
+
+        initializeApp();
     </script>
 </body>
 </html>
