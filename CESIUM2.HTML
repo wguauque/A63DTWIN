@@ -136,7 +136,11 @@
             let colorExpression = appState.colorizeByDate ? dateColorExpr : "color('white')";
 
             if (appState.searchQuery) {
-                const searchCond = `(\${${CONFIG.search.PR1}} === '${appState.searchQuery}') || (\${${CONFIG.search.PR2}} === '${appState.searchQuery}')`;
+                // NEW: Check if the search query is a number
+                const isNumericSearch = !isNaN(parseFloat(appState.searchQuery)) && isFinite(appState.searchQuery);
+                const searchValue = isNumericSearch ? Number(appState.searchQuery) : `'${appState.searchQuery}'`;
+                
+                const searchCond = `(\${${CONFIG.search.PR1}} === ${searchValue}) || (\${${CONFIG.search.PR2}} === ${searchValue})`;
                 colorExpression = `Boolean(${searchCond}) ? color('yellow') : ${colorExpression}`;
             }
 
