@@ -41,7 +41,7 @@
 
     <div id="toolbar">
         <span class="toolbar-group-label">Search & View</span>
-        <input type="text" id="prSearchInput" placeholder="Search by PR (e.g., 45000)">
+        <input type="text" id="prSearchInput" placeholder="Search by PR (e.g., 198110)">
         <button id="colorizeDateBtn">Toggle Date Colors</button>
 
         <span class="toolbar-group-label">Filters</span>
@@ -59,47 +59,35 @@
                     propertyName: 'excelLayerInfoENTREPRISE',
                     displayName: 'Company',
                     type: 'select',
-                    options: [
-                        'COLAS SO',
-                        'GIE A63',
-                        'GIE-COLAS SO',
-                        'GPT  COLAS-MALLET-SIORAT',
-                        'LAFITTE TP',
-                        'PRESTATAIRE PREMIER GER'
-                    ]
+                    options: ['COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER']
                 },
                 {
                     propertyName: 'excelLayerInfoTYPE_COUCH',
                     displayName: 'Layer Type',
                     type: 'select',
-                    options: [
-                        'Arase',
-                        'Base',
-                        'couche de forme',
-                        'Fondations',
-                        'Forme',
-                        'Liaison',
-                        'Roulement'
-                    ]
+                    options: ['Arase', 'Base', 'couche de forme', 'Fondations', 'Forme', 'Liaison', 'Roulement']
                 },
                 {
                     propertyName: 'excelLayerInfoN°_ORDRE',
                     displayName: 'Order Number',
                     type: 'numeric'
+                },
+                {
+                    propertyName: 'corridorModelInformationRegionName',
+                    displayName: 'Region Name',
+                    type: 'numeric'
                 }
             ],
             search: {
-                PR1: 'excelLayerInfoPR_1',
-                PR2: 'excelLayerInfoPR_2'
+                PR: 'excelLayerInfoPR1'
             },
             date: {
-                propertyName: 'excelLayerInfoDATE_MS',
-                min: -631152000000, // Jan 1, 1950 in milliseconds
-                max: 1767225600000, // Jan 1, 2026 in milliseconds
+                propertyName: 'excelLayerInfoDATEMS',
+                min: 1950, // Year min
+                max: 2025  // Year max
             }
         };
 
-        // --- Global variables for application state
         let myTileset;
         const appState = { filters: {}, searchQuery: '', colorizeByDate: false };
 
@@ -131,16 +119,17 @@
 
             // PART B: Build the color expression
             const dateRange = CONFIG.date.max - CONFIG.date.min;
-            const dateColorExpr = `color('red').lerp(color('lime'), (Number(\${${CONFIG.date.propertyName}}) - ${CONFIG.date.min}) / ${dateRange})`;
+            // This new expression extracts the 4-digit year from the date string for the color ramp
+            const yearExpression = `Number(regExp('^(\\\\d{4})', \${${CONFIG.date.propertyName}}).exec(1))`;
+            const dateColorExpr = `color('red').lerp(color('lime'), (${yearExpression} - ${CONFIG.date.min}) / ${dateRange})`;
             
             let colorExpression = appState.colorizeByDate ? dateColorExpr : "color('white')";
 
             if (appState.searchQuery) {
-                // NEW: Check if the search query is a number
                 const isNumericSearch = !isNaN(parseFloat(appState.searchQuery)) && isFinite(appState.searchQuery);
                 const searchValue = isNumericSearch ? Number(appState.searchQuery) : `'${appState.searchQuery}'`;
                 
-                const searchCond = `(\${${CONFIG.search.PR1}} === ${searchValue}) || (\${${CONFIG.search.PR2}} === ${searchValue})`;
+                const searchCond = `\${${CONFIG.search.PR}} === ${searchValue}`;
                 colorExpression = `Boolean(${searchCond}) ? color('yellow') : ${colorExpression}`;
             }
 
@@ -161,7 +150,6 @@
             CONFIG.filterableProperties.forEach(prop => {
                 const item = document.createElement('div');
                 item.className = 'filter-item';
-
                 const label = document.createElement('label');
                 label.htmlFor = `filter-${prop.propertyName}`;
                 label.textContent = prop.displayName;
@@ -174,7 +162,6 @@
                     defaultOption.value = '';
                     defaultOption.textContent = `All ${prop.displayName}s`;
                     control.appendChild(defaultOption);
-
                     prop.options.forEach(opt => {
                         const option = document.createElement('option');
                         option.value = opt;
@@ -192,7 +179,6 @@
                     appState.filters[prop.propertyName] = control.value;
                     updateTilesetStyle();
                 });
-
                 item.appendChild(control);
                 container.appendChild(item);
             });
@@ -274,7 +260,6 @@
             });
         }
         
-        // --- Run the application ---
         main();
 
     </script>
