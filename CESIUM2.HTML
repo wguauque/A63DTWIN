@@ -59,7 +59,7 @@
     <div id="toolbar">
         <span class="toolbar-group-label">Search by PR</span>
         <div class="pr-search-container">
-            <input type="text" id="pr-search" placeholder="Enter PR (e.g., 98110)">
+            <input type="text" id="pr-search" placeholder="Enter PR (e.g., 98000)">
             <div id="autocomplete-results"></div>
         </div>
 
@@ -82,11 +82,15 @@
             'TAB BET', 'CBX C30/37', 'CBX C25/30', 'Etanch', 'Autres'
         ];
         
-        // Sample list of PR values for autocomplete functionality
-        const prList = ['98110', '45000', '134961', '99500', '101230', '48000', '52000', '88000'];
+        // Dynamically generate the PR list for autocomplete
+        const prList = [];
+        for (let i = 34000; i <= 140000; i += 1000) {
+            prList.push(i.toString());
+        }
 
         let myTileset;
         let defaultStyle;
+        let viewer; // Viewer needs to be accessible for the zoom function
         
         // --- Central application state ---
         const appState = {
@@ -124,6 +128,28 @@
             });
         }
 
+        async function zoomToFeature(prValue) {
+            if (!myTileset || !viewer || !prValue) return;
+
+            // Temporarily apply a style that shows ONLY the selected feature.
+            const zoomStyle = new Cesium.Cesium3DTileStyle({
+                show: `getProperty('excelLayerInfoPR_1') === '${prValue}'`
+            });
+            myTileset.style = zoomStyle;
+
+            try {
+                // Zoom to the tileset. Because only one feature is visible,
+                // the camera will focus on it.
+                await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, -0.5, myTileset.boundingSphere.radius * 1.5));
+            } catch (error) {
+                console.error("Error during zoomTo operation:", error);
+            } finally {
+                // IMPORTANT: Restore the original interactive style after the zoom animation.
+                updateTilesetStyle();
+            }
+        }
+
+
         // ===================================================================================
         // --- MAIN APPLICATION SETUP ---
         // ===================================================================================
@@ -131,7 +157,7 @@
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
-                const viewer = new Cesium.Viewer("cesiumContainer", {
+                viewer = new Cesium.Viewer("cesiumContainer", {
                     timeline: false, animation: false, sceneModePicker: false, 
                     baseLayerPicker: false, geocoder: true, 
                     creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false 
@@ -207,7 +233,11 @@
                         materialSearch.value = '';
                         appState.materialSearch = '';
                         appState.prSearch = pr;
+                        
+                        // First, update the style to highlight the feature
                         updateTilesetStyle();
+                        // Then, zoom the camera to it
+                        zoomToFeature(pr);
                     });
                     autocompleteResults.appendChild(item);
                 });
