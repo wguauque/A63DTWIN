@@ -79,7 +79,8 @@
                 }
             ],
             search: {
-                PR: 'excelLayerInfoPR1'
+                PR1: 'excelLayerInfoPR1',
+                PR2: 'excelLayerInfoPR2'
             },
             date: {
                 propertyName: 'excelLayerInfoDATEMS',
@@ -119,25 +120,43 @@
 
             // PART B: Build the color expression
             const dateRange = CONFIG.date.max - CONFIG.date.min;
-            // This new expression extracts the 4-digit year from the date string for the color ramp
-            const yearExpression = `Number(regExp('^(\\\\d{4})', \${${CONFIG.date.propertyName}}).exec(1))`;
-            const dateColorExpr = `color('red').lerp(color('lime'), (${yearExpression} - ${CONFIG.date.min}) / ${dateRange})`;
+            // CORRECTED: This expression now correctly extracts the year from a string like "2013-06-30..."
+            // It also safely handles cases where the date property might be missing for a feature.
+            const dateColorExpr = `{
+                "expression": "const dateString = \${${CONFIG.date.propertyName}}; if(!dateString) { return color('white'); } const match = regExp('^(\\\\d{4})').exec(dateString); const year = (match === null) ? 0 : Number(match[1]); if (year === 0) { return color('white'); } return color('red').lerp(color('lime'), (year - ${CONFIG.date.min}) / ${dateRange})",
+                "defines": {}
+            }`;
             
-            let colorExpression = appState.colorizeByDate ? dateColorExpr : "color('white')";
+            let colorFinalExpression = appState.colorizeByDate ? dateColorExpr : "color('white')";
 
             if (appState.searchQuery) {
                 const isNumericSearch = !isNaN(parseFloat(appState.searchQuery)) && isFinite(appState.searchQuery);
                 const searchValue = isNumericSearch ? Number(appState.searchQuery) : `'${appState.searchQuery}'`;
                 
-                const searchCond = `\${${CONFIG.search.PR}} === ${searchValue}`;
-                colorExpression = `Boolean(${searchCond}) ? color('yellow') : ${colorExpression}`;
+                // CORRECTED: Now searches both PR1 and PR2
+                const searchCond = `(\${${CONFIG.search.PR1}} === ${searchValue}) || (\${${CONFIG.search.PR2}} === ${searchValue})`;
+                
+                if (appState.colorizeByDate) {
+                    // If colorizing by date, embed the search as a condition
+                    colorFinalExpression = `{
+                        "expression": "if(${searchCond}) { return color('yellow'); } ${dateColorExpr.expression.substring(1)}",
+                        "defines": {}
+                    }`;
+                } else {
+                    // Otherwise, just use the search condition
+                    colorFinalExpression = `Boolean(${searchCond}) ? color('yellow') : color('white')`;
+                }
             }
 
             // PART C: Apply the final combined style
-            myTileset.style = new Cesium.Cesium3DTileStyle({
-                show: showExpression,
-                color: colorExpression
-            });
+            // Note: Cesium style can be a string or an object with defines/expression
+            let styleObject;
+            if (typeof colorFinalExpression === 'string') {
+                styleObject = { show: showExpression, color: colorFinalExpression };
+            } else {
+                styleObject = { show: showExpression, color: JSON.parse(colorFinalExpression) };
+            }
+            myTileset.style = new Cesium.Cesium3DTileStyle(styleObject);
         }
 
         // ===================================================================================
