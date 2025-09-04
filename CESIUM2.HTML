@@ -144,9 +144,12 @@
             myTileset.style = zoomStyle;
 
             try {
-                // Zoom to the tileset. Because only features in the range are visible,
-                // Cesium will calculate the best view to frame them.
-                await viewer.zoomTo(myTileset);
+                // Fly to the overall tileset area with a new camera offset that zooms in closer
+                // and looks down. This is a more robust approach than the previous zoom.
+                await viewer.flyTo(myTileset, {
+                    duration: 1.5,
+                    offset: new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 3000) // Look down from 3km
+                });
             } catch (error) {
                 console.error("Error during zoomTo operation:", error);
             } finally {
@@ -173,15 +176,22 @@
                 loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
                 viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
 
-
                 loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
-                
-                // Drape the model onto the terrain
-                myTileset.clampToGround = true;
-
                 viewer.scene.primitives.add(myTileset);
                 
+                // Wait for the tileset to be ready before adjusting its position
+                await myTileset.readyPromise;
+
+                // Manually adjust the height of the model to sit on the terrain correctly.
+                // This is more reliable than clampToGround for some datasets.
+                const heightOffset = 27.0; // Value in meters to raise the model.
+                const cartographic = Cesium.Cartographic.fromCartesian(myTileset.boundingSphere.center);
+                const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0.0);
+                const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, heightOffset);
+                const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
+                myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
+
                 const colorConditions = materialList.map((material) => {
                     const color = Cesium.Color.fromRandom({ alpha: 1.0 });
                     return [`\${name_1} === '${material}'`, `color('${color.toCssColorString()}')`];
@@ -269,7 +279,7 @@
                 prSearchInput.value = '';
                 autocompleteResults.innerHTML = '';
                 appState.prSearch = '';
-                appState.materialSearch = materialSearch.value;
+                appState.materialSearch = value;
                 updateTilesetStyle();
             });
             
