@@ -9,226 +9,343 @@
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; overflow: hidden; background-color: #f0f0f0;
-        }
-        #cesiumContainer {
-            position: absolute; top: 0; left: 0; height: 100%; width: 100%; margin: 0; overflow: hidden; padding: 0; background: #000;
-        }
-        #loadingOverlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(30, 30, 30, 0.97); display: flex;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: #ffffff; text-align: center;
-            transition: opacity 0.5s ease-out;
-        }
-        #loadingOverlay h1 { font-size: 1.6em; margin-top: 10px; font-weight: 300; max-width: 80%; }
-        #headerLogos {
-            position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between;
-            padding: 10px 20px; background-color: rgba(255, 255, 255, 0.92); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            z-index: 1001; height: 70px; box-sizing: border-box;
-        }
-        #headerLogos nav { margin-left: auto; margin-right: auto; }
-        #headerLogos nav a { font-weight: 500; color: #2c3e50; text-decoration: none; padding: 5px 15px; border-radius: 5px; transition: background-color 0.3s; }
-        #headerLogos nav a:hover { background-color: #e0e0e0; }
-        #logoAtlandes, #logoEelisa { height: 50px; width: auto; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow: hidden; }
+        #cesiumContainer { position: absolute; top: 0; left: 0; height: 100%; width: 100%; }
+        #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30,30,30,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.5s ease; }
+        #headerLogos { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: rgba(255, 255, 255, 0.95); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1001; height: 70px; box-sizing: border-box; }
+        #logoAtlandes, #logoEelisa { height: 45px; width: auto; } /* Adjusted logo height */
         .cesium-widget-credits { display: none !important; }
         
-        #toolbar {
-            position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.85); padding: 8px;
-            border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 220px;
+        #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(45,45,45,0.9); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 1000; max-width: 280px; color: white; }
+        .toolbar-group-label { font-weight: bold; font-size: 0.95em; color: #00bcd4; margin-top: 12px; margin-bottom: 8px; padding-left: 2px; display: block; border-bottom: 1px solid #444; padding-bottom: 3px; }
+        #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; box-sizing: border-box; }
+        #toolbar button { background-color: #444; cursor: pointer; text-align: left; }
+
+        /* Styles for PR Autocomplete */
+        .pr-search-container { position: relative; }
+        #autocomplete-results {
+            position: absolute;
+            top: 100%;
+            left: 2px;
+            right: 2px;
+            background: #3a3a3a;
+            border: 1px solid #777;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            z-index: 1002;
+            max-height: 200px;
+            overflow-y: auto;
         }
-        #toolbar button {
-            background-color: #444; border: 1px solid #666; color: #fff; padding: 8px 12px; margin: 4px 2px;
-            border-radius: 4px; cursor: pointer; display: block; width: calc(100% - 4px);
-            box-sizing: border-box; text-align: left; transition: background-color 0.2s;
+        .autocomplete-item {
+            padding: 8px;
+            color: #fff;
+            cursor: pointer;
         }
-        #toolbar button:hover { background-color: #555; }
-        .toolbar-group-label {
-            font-weight: bold; font-size: 0.9em; color: #ddd; margin-top: 10px; margin-bottom: 3px;
-            padding-left: 2px; display: block;
+        .autocomplete-item:hover {
+            background-color: #555;
         }
-        .toolbar-group-label:first-child { margin-top: 0; }
     </style>
 </head>
 <body>
 
     <div id="cesiumContainer"></div>
-
-    <div id="loadingOverlay">
-        <h1>Loading Digital Twin Environment...</h1>
-    </div>
+    <div id="loadingOverlay"><h1>Loading Digital Twin...</h1></div>
 
     <div id="headerLogos">
-        <img src="https://upload.wikimedia.org/wikipedia/fr/a/a0/Logo_Atlandes.svg" alt="Atlandes Logo" id="logoAtlandes">
-        <nav>
-            <a href="index.html">Home</a>
-            <a href="cesium.html">3D Model</a>
-            <a href="dashboard.html">Dashboard</a>
-            <a href="map.html">ArcGIS Map</a>
-        </nav>
-        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Digital Twins Logo" id="logoEelisa">
+        <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
+        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
     </div>
 
     <div id="toolbar">
-        <span class="toolbar-group-label">Clipping Tools</span>
-        <button id="enableClipBtn">Enable/Disable Clipping</button>
-        <button id="inverseClipBtn">Inverse Clipping</button>
-        <button id="removeClipBtn">Remove Last Polygon</button>
+        <span class="toolbar-group-label">Search by PR</span>
+        <div class="pr-search-container">
+            <input type="text" id="pr-search" placeholder="Enter PR (e.g., 98000)">
+            <div id="autocomplete-results"></div>
+        </div>
+
+        <span class="toolbar-group-label">Filter by Company</span>
+        <select id="entreprise-filter"></select>
+        
+        <span class="toolbar-group-label">Filter & Search by Material</span>
+        <label for="material-filter" style="font-size:0.85em; margin-left: 2px;">Filter by Material (name_1)</label>
+        <select id="material-filter"></select>
+        
+        <label for="material-search" style="font-size:0.85em; margin-left: 2px; margin-top: 10px; display: block;">Highlight by Material (name_1)</label>
+        <input type="text" id="material-search" placeholder="e.g., BBSG">
+        
+        <button id="reset-btn" style="margin-top: 10px;">Reset View</button>
     </div>
 
     <script>
-        async function main() {
-            const loadingMessageElement = document.querySelector("#loadingOverlay h1");
-            const loadingOverlayElement = document.getElementById("loadingOverlay");
+        const materialList = [
+            'BBSG 0/14', 'BBSG', 'BBSG 0/10 R50', 'GNT', 'GNT 0/31.5', 'GB', 
+            'GB 0/14 R50', 'GB 014 OPTIBASE', 'SB', 'GTLH', 'geotextile classe 7',
+            'BBTM 0/10', 'BBTM 0/10 R20', 'EME2 0/14R30', 'BBME3 R30', 'BBDr 0/10',
+            'BB 0/6 acc', 'BB Accoustiq', 'BBME 0/10R15', 'BBME 0/10 R30', 'EME 0/14 R30', 'BBME',
+            'TAB BET', 'CBX C30/37', 'CBX C25/30', 'Etanch', 'Autres'
+        ];
+        
+        const companyList = [
+            'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER'
+        ];
 
+        const prList = [];
+        for (let i = 34000; i <= 140000; i += 1000) {
+            prList.push(i.toString());
+        }
+
+        let myTileset;
+        let defaultStyle;
+        let viewer; 
+        
+        const appState = {
+            materialFilter: '',
+            entrepriseFilter: '',
+            materialSearch: '',
+            prSearch: ''
+        };
+
+        // ===================================================================================
+        // --- STYLE & VIEW LOGIC ---
+        // ===================================================================================
+        
+        function getMaterialColor(material) {
+            const upperMaterial = material.toUpperCase();
+            if (upperMaterial.includes('BBSG') || upperMaterial.includes('BBTM') || upperMaterial.includes('BBME') || upperMaterial.includes('EME') || upperMaterial.includes('BBDR') || upperMaterial.includes('ACCOUSTIQ') || upperMaterial.includes('ACC')) {
+                return Cesium.Color.DARKSLATEGRAY.toCssColorString(); // Asphalt layers
+            }
+            if (upperMaterial.includes('GB') || upperMaterial.includes('GNT')) {
+                return Cesium.Color.GRAY.toCssColorString(); // Base layers
+            }
+            if (upperMaterial.includes('SB') || upperMaterial.includes('GTLH') || upperMaterial.includes('FORME')) {
+                return Cesium.Color.BURLYWOOD.toCssColorString(); // Subbase layers
+            }
+            if (upperMaterial.includes('BET') || upperMaterial.includes('CBX')) {
+                return Cesium.Color.LIGHTGRAY.toCssColorString(); // Concrete
+            }
+            if (upperMaterial.includes('GEOTEXTILE')) {
+                return Cesium.Color.WHITESMOKE.toCssColorString();
+            }
+            if (upperMaterial.includes('ETANCH')) {
+                return Cesium.Color.STEELBLUE.toCssColorString();
+            }
+            return Cesium.Color.DIMGRAY.toCssColorString(); // Default for 'Autres', etc.
+        }
+
+        function updateTilesetStyle() {
+            if (!myTileset || !defaultStyle) return;
+
+            let showConditions = [];
+            if (appState.materialFilter) {
+                showConditions.push(`\${name_1} === '${appState.materialFilter}'`);
+            }
+            if (appState.entrepriseFilter) {
+                showConditions.push(`\${excelLayerInfoENTREPRISE} === '${appState.entrepriseFilter}'`);
+            }
+
+            const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
+
+            let colorExpression;
+            if (appState.prSearch) {
+                colorExpression = `Number(\${excelLayerInfoPR1}) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`;
+            } else if (appState.materialSearch) {
+                colorExpression = `regExp('${appState.materialSearch}', 'i').test(\${name_1}) ? color('yellow') : defaultStyle.color.expression`;
+            } else {
+                colorExpression = defaultStyle.color.expression;
+            }
+
+            myTileset.style = new Cesium.Cesium3DTileStyle({
+                show: showExpression,
+                color: colorExpression
+            });
+        }
+
+        function zoomToFeature(prValue) {
+            if (!myTileset || !viewer || !prValue) return;
+
+            const prNumber = Number(prValue);
+            if (isNaN(prNumber)) return;
+
+            const lowerBound = prNumber - 500;
+            const upperBound = prNumber + 500;
+
+            const zoomStyle = new Cesium.Cesium3DTileStyle({
+                show: `Number(\${excelLayerInfoPR1}) >= ${lowerBound} && Number(\${excelLayerInfoPR1}) < ${upperBound}`
+            });
+            myTileset.style = zoomStyle;
+
+            setTimeout(async () => {
+                try {
+                    await viewer.flyTo(myTileset, { 
+                        duration: 1.5,
+                        offset: new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 2500) 
+                    });
+                } catch (error) {
+                    console.error("Error during flyTo operation:", error);
+                } finally {
+                    updateTilesetStyle();
+                }
+            }, 250); 
+        }
+
+
+        // ===================================================================================
+        // --- MAIN APPLICATION SETUP ---
+        // ===================================================================================
+        async function main() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
             try {
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
-
-                const viewer = new Cesium.Viewer("cesiumContainer", {
-                    timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false,
-                    geocoder: true,
-                    creditContainer: document.createElement("div"),
-                    infoBox: false, selectionIndicator: false
+                viewer = new Cesium.Viewer("cesiumContainer", {
+                    timeline: false, animation: false, sceneModePicker: false, 
+                    baseLayerPicker: false, geocoder: true, 
+                    creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false 
                 });
-                window.cesiumViewer = viewer; // Global viewer
-                const scene = viewer.scene;
-
                 viewer.scene.globe.enableLighting = true;
-                viewer.scene.postProcessStages.fxaa.enabled = true;
-                viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
-                scene.skyAtmosphere.show = true;
-
-                loadingMessageElement.textContent = "Loading Global Terrain...";
-                await Cesium.createWorldTerrainAsync().then(terrain => { scene.terrainProvider = terrain; });
-
-                loadingMessageElement.textContent = "Loading Project Model...";
-                const myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3385864);
-                viewer.scene.primitives.add(myTileset);
-
-                myTileset.style = new Cesium.Cesium3DTileStyle({
-                    color: {
-                        conditions: [
-                            ["${name_1} === 'BBSG 0/14'", "color('#A0522D')"], ["${name_1} === 'BBSG'", "color('#A52A2A')"],
-                            ["${name_1} === 'BBSG 0/10 R50'", "color('#CD853F')"], ["${name_1} === 'GNT'", "color('#D2B48C')"],
-                            ["${name_1} === 'GNT 0/31.5'", "color('#BC8F8F')"], ["${name_1} === 'GB'", "color('#C0A080')"],
-                            ["${name_1} === 'GB 0/14 R50'", "color('#D8BFD8')"], ["${name_1} === 'GB 014 OPTIBASE'", "color('#DEB887')"],
-                            ["${name_1} === 'SB'", "color('#B08060')"], ["${name_1} === 'GTLH'", "color('#BDB76B')"],
-                            ["${name_1} === 'geotextile classe 7'", "color('#8FBC8F')"], ["${name_1} === 'BBTM 0/10'", "color('#696969')"],
-                            ["${name_1} === 'BBTM 0/10 R20'", "color('#777777')"], ["${name_1} === 'EME2 0/14R30'", "color('#4F4F4F')"],
-                            ["${name_1} === 'BBME3 R30'", "color('#555555')"], ["${name_1} === 'BBDr 0/10'", "color('#333333')"],
-                            ["${name_1} === 'BB 0/6 acc'", "color('#666666')"], ["${name_1} === 'BB Accoustiq'", "color('#708090')"],
-                            ["${name_1} === 'BBME 0/10R15'", "color('#505050')"], ["${name_1} === 'BBME 0/10 R30'", "color('#585858')"],
-                            ["${name_1} === 'EME 0/14 R30'", "color('#454545')"], ["${name_1} === 'BBME'", "color('#606060')"],
-                            ["${name_1} === 'TAB BET'", "color('#C0C0C0')"], ["${name_1} === 'CBX C30/37'", "color('#A9A9A9')"],
-                            ["${name_1} === 'CBX C25/30'", "color('#B5B5B5')"], ["${name_1} === 'Etanch'", "color('#4682B4')"],
-                            ["${name_1} === 'Autres'", "color('#800080')"], [true, "color('white')"]
-                        ]
-                    }
-                });
-
-                loadingMessageElement.textContent = "Positioning Camera...";
-                await viewer.zoomTo(myTileset);
-
-                if (Cesium.defined(myTileset)) {
-                    myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
-                        edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
-                    });
-                }
                 
-                // Clipping Logic
-                const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
-                let activeShapePoints = [];
-                let activeShape;
-                let floatingPoint;
+                loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
+                viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
 
-                handler.setInputAction(function (event) {
-                    const earthPosition = scene.pickPosition(event.position);
-                    if (Cesium.defined(earthPosition)) {
-                        if (activeShapePoints.length === 0) {
-                            floatingPoint = viewer.entities.add({
-                                position: earthPosition,
-                                point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
-                            });
-                            activeShapePoints.push(earthPosition);
-                            const dynamicPositions = new Cesium.CallbackProperty(function () {
-                                return new Cesium.PolygonHierarchy(activeShapePoints);
-                            }, false);
-                            activeShape = viewer.entities.add({
-                                polygon: {
-                                    hierarchy: dynamicPositions,
-                                    material: new Cesium.ColorMaterialProperty(Cesium.Color.ORANGERED.withAlpha(0.7)),
-                                },
-                            });
-                        }
-                        activeShapePoints.push(earthPosition);
-                    }
-                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+                loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
+                myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
+                viewer.scene.primitives.add(myTileset);
+                
+                await myTileset.readyPromise;
 
-                handler.setInputAction(function (event) {
-                    if (Cesium.defined(floatingPoint)) {
-                        const newPosition = scene.pickPosition(event.endPosition);
-                        if (Cesium.defined(newPosition)) {
-                            floatingPoint.position.setValue(newPosition);
-                            activeShapePoints.pop();
-                            activeShapePoints.push(newPosition);
-                        }
-                    }
-                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+                const heightOffset = 50.0;
+                const cartographic = Cesium.Cartographic.fromCartesian(myTileset.boundingSphere.center);
+                const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0.0);
+                const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, heightOffset);
+                const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
+                myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
 
-                handler.setInputAction(function () {
-                    if (activeShapePoints.length > 2) {
-                        const finalPoints = activeShapePoints.slice(0, -1);
-                        if (myTileset?.clippingPolygons) {
-                            const newClippingPolygon = new Cesium.ClippingPolygon({ positions: finalPoints });
-                            myTileset.clippingPolygons.add(newClippingPolygon);
-                        }
-                    }
-                    viewer.entities.remove(floatingPoint);
-                    viewer.entities.remove(activeShape);
-                    floatingPoint = undefined;
-                    activeShape = undefined;
-                    activeShapePoints = [];
-                }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+                const colorConditions = materialList.map((material) => {
+                    return [`\${name_1} === '${material}'`, `color('${getMaterialColor(material)}')`];
+                });
+                colorConditions.push([true, "color('white')"]);
+                defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
+                myTileset.style = defaultStyle;
 
-                loadingOverlayElement.style.opacity = "0";
-                setTimeout(() => { loadingOverlayElement.style.display = "none"; }, 500);
+                buildMaterialFilterUI();
+                buildEntrepriseFilterUI();
+                setupEventListeners();
 
-            } catch (error) {
+                loadingOverlay.querySelector('h1').textContent = "Positioning Camera...";
+                await viewer.zoomTo(myTileset);
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => { loadingOverlay.style.display = 'none'; }, 500);
+
+            } catch (error)
+            {
                 console.error("Critical error during Cesium setup:", error);
-                loadingMessageElement.textContent = `Application Error: ${error.message || 'An unknown error occurred.'}`;
-                loadingMessageElement.style.color = "#ffdddd";
+                loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message}`;
             }
         }
 
-        function connectToolbarButtons() {
-            const viewer = window.cesiumViewer;
-            if (!viewer) {
-                console.error("Cesium Viewer not found.");
-                return;
-            }
-            const myTileset = viewer.scene.primitives.get(viewer.scene.primitives.length - 1);
-            if (!myTileset || !myTileset.clippingPolygons) {
-                console.error("Clipping-enabled tileset not found.");
-                return;
-            }
-
-            document.getElementById('enableClipBtn').addEventListener('click', () => {
-                myTileset.clippingPolygons.enabled = !myTileset.clippingPolygons.enabled;
-            });
-
-            document.getElementById('inverseClipBtn').addEventListener('click', () => {
-                myTileset.clippingPolygons.inverse = !myTileset.clippingPolygons.inverse;
-            });
-
-            document.getElementById('removeClipBtn').addEventListener('click', () => {
-                if (myTileset.clippingPolygons.length > 0) {
-                    myTileset.clippingPolygons.remove(myTileset.clippingPolygons.get(myTileset.clippingPolygons.length - 1));
-                }
+        function buildMaterialFilterUI() {
+            const select = document.getElementById('material-filter');
+            select.innerHTML = '';
+            const allOption = document.createElement('option');
+            allOption.value = '';
+            allOption.textContent = 'Show All Materials';
+            select.appendChild(allOption);
+            materialList.forEach(material => {
+                const option = document.createElement('option');
+                option.value = material;
+                option.textContent = material;
+                select.appendChild(option);
             });
         }
         
-        // Run
+        function buildEntrepriseFilterUI() {
+            const select = document.getElementById('entreprise-filter');
+            select.innerHTML = '';
+            const allOption = document.createElement('option');
+            allOption.value = '';
+            allOption.textContent = 'Show All Companies';
+            select.appendChild(allOption);
+            companyList.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company;
+                option.textContent = company;
+                select.appendChild(option);
+            });
+        }
+
+
+        function setupEventListeners() {
+            const prSearchInput = document.getElementById('pr-search');
+            const autocompleteResults = document.getElementById('autocomplete-results');
+            const materialFilter = document.getElementById('material-filter');
+            const entrepriseFilter = document.getElementById('entreprise-filter');
+            const materialSearch = document.getElementById('material-search');
+
+            prSearchInput.addEventListener('input', () => {
+                const value = prSearchInput.value.toLowerCase();
+                autocompleteResults.innerHTML = '';
+                if (!value) {
+                    appState.prSearch = '';
+                    updateTilesetStyle();
+                    return;
+                }
+                
+                const filteredPRs = prList.filter(pr => pr.toLowerCase().startsWith(value));
+                filteredPRs.forEach(pr => {
+                    const item = document.createElement('div');
+                    item.className = 'autocomplete-item';
+                    item.textContent = pr;
+                    item.addEventListener('click', () => {
+                        prSearchInput.value = pr;
+                        autocompleteResults.innerHTML = '';
+                        materialSearch.value = '';
+                        appState.materialSearch = '';
+                        appState.prSearch = pr;
+                        
+                        updateTilesetStyle();
+                        zoomToFeature(pr);
+                    });
+                    autocompleteResults.appendChild(item);
+                });
+            });
+
+            materialFilter.addEventListener('change', () => {
+                appState.materialFilter = materialFilter.value;
+                updateTilesetStyle();
+            });
+
+            entrepriseFilter.addEventListener('change', () => {
+                appState.entrepriseFilter = entrepriseFilter.value;
+                updateTilesetStyle();
+            });
+
+
+
+            materialSearch.addEventListener('input', () => {
+                prSearchInput.value = '';
+                autocompleteResults.innerHTML = '';
+                appState.prSearch = '';
+                appState.materialSearch = materialSearch.value;
+                updateTilesetStyle();
+            });
+            
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                materialFilter.value = '';
+                entrepriseFilter.value = '';
+                materialSearch.value = '';
+                prSearchInput.value = '';
+                autocompleteResults.innerHTML = '';
+                
+                appState.materialFilter = '';
+                appState.entrepriseFilter = '';
+                appState.materialSearch = '';
+                appState.prSearch = '';
+                
+                myTileset.style = defaultStyle;
+                viewer.zoomTo(myTileset);
+            });
+        }
+        
         main();
-        connectToolbarButtons();
     </script>
 </body>
 </html>
