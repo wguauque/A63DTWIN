@@ -2,285 +2,163 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
     <title>A63 Digital Twin - 3D Model</title>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
-
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow: hidden; }
+        body { margin: 0; overflow: hidden; }
         #cesiumContainer { position: absolute; top: 0; left: 0; height: 100%; width: 100%; }
         #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30,30,30,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.5s ease; }
         #headerLogos { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: rgba(255, 255, 255, 0.95); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1001; height: 70px; box-sizing: border-box; }
-        #headerLogos nav { margin: auto; }
-        #headerLogos nav a { font-weight: 500; color: #2c3e50; text-decoration: none; padding: 5px 15px; border-radius: 5px; transition: background-color 0.3s; }
         #logoAtlandes, #logoEelisa { height: 50px; }
-        .cesium-widget-credits { display: none !important; }
-        
-        #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(45,45,45,0.9); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 1000; max-width: 280px; color: white; }
+        #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(45,45,45,0.9); padding: 10px; border-radius: 8px; max-width: 280px; color: white; z-index: 1000; }
         .toolbar-group-label { font-weight: bold; font-size: 0.95em; color: #00bcd4; margin-top: 12px; margin-bottom: 8px; padding-left: 2px; display: block; border-bottom: 1px solid #444; padding-bottom: 3px; }
-        .toolbar-group-label:first-child { margin-top: 0; }
-        #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; box-sizing: border-box; }
-        #toolbar button { background-color: #444; cursor: pointer; text-align: left; }
+        #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; }
         #toolbar button:hover { background-color: #5a5a5a; }
-        .filter-item { margin-bottom: 5px; }
-        .filter-item label { display: block; font-size: 0.85em; margin-bottom: 2px; color: #ccc; }
     </style>
 </head>
 <body>
 
-    <div id="cesiumContainer"></div>
-    <div id="loadingOverlay"><h1>Loading Digital Twin...</h1></div>
+<div id="cesiumContainer"></div>
+<div id="loadingOverlay"><h1>Loading Digital Twin...</h1></div>
 
-    <div id="headerLogos">
-        <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
-        <nav><a href="#">3D Model</a></nav>
-        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
-    </div>
+<div id="headerLogos">
+    <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
+    <nav><a href="#">3D Model</a></nav>
+    <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
+</div>
 
-    <div id="toolbar">
-        <span class="toolbar-group-label">Search & View</span>
-        <input type="text" id="prSearchInput" placeholder="Search by PR (e.g., 198110)">
-        <button id="colorizeDateBtn">Toggle Date Colors</button>
+<div id="toolbar">
+    <span class="toolbar-group-label">Search & View</span>
+    <input type="text" id="prSearchInput" placeholder="Search by PR (e.g., 198110)">
+    <button id="colorizeDateBtn">Toggle Date Colors</button>
 
-        <span class="toolbar-group-label">Filters</span>
-        <div id="filter-container"></div>
-        <button id="reset-filters-btn">Reset All Filters & View</button>
-    </div>
+    <span class="toolbar-group-label">Filters</span>
+    <div id="filter-container"></div>
+    <button id="reset-filters-btn">Reset All Filters & View</button>
+</div>
 
-    <script>
-        // ===================================================================================
-        // --- 1. CENTRAL CONFIGURATION: The single source of truth for your data model ---
-        // ===================================================================================
-        const CONFIG = {
-            filterableProperties: [
-                {
-                    propertyName: 'excelLayerInfoENTREPRISE',
-                    displayName: 'Company',
-                    type: 'select',
-                    options: ['COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER']
-                },
-                {
-                    propertyName: 'excelLayerInfoTYPE_COUCH',
-                    displayName: 'Layer Type',
-                    type: 'select',
-                    options: ['Arase', 'Base', 'couche de forme', 'Fondations', 'Forme', 'Liaison', 'Roulement']
-                },
-                {
-                    propertyName: 'excelLayerInfoN°_ORDRE',
-                    displayName: 'Order Number',
-                    type: 'numeric'
-                },
-                {
-                    propertyName: 'corridorModelInformationRegionName',
-                    displayName: 'Region Name',
-                    type: 'numeric'
-                }
-            ],
-            search: {
-                PR1: 'excelLayerInfoPR1',
-                PR2: 'excelLayerInfoPR2'
+<script>
+    const CONFIG = {
+        filterableProperties: [
+            {
+                propertyName: 'excelLayerInfoENTREPRISE',
+                displayName: 'Company',
+                type: 'select',
+                options: ['COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER']
             },
-            date: {
-                propertyName: 'excelLayerInfoDATEMS',
-                min: 1950, // Year min
-                max: 2025  // Year max
+            {
+                propertyName: 'excelLayerInfoTYPE_COUCH',
+                displayName: 'Layer Type',
+                type: 'select',
+                options: ['Arase', 'Base', 'couche de forme', 'Fondations', 'Forme', 'Liaison', 'Roulement']
+            },
+            {
+                propertyName: 'excelLayerInfoN°_ORDRE',
+                displayName: 'Order Number',
+                type: 'numeric'
+            },
+            {
+                propertyName: 'corridorModelInformationRegionName',
+                displayName: 'Region Name',
+                type: 'numeric'
             }
-        };
+        ],
+        search: {
+            PR1: 'excelLayerInfoPR1',
+            PR2: 'excelLayerInfoPR2'
+        },
+        date: {
+            propertyName: 'excelLayerInfoDATEMS',
+            min: 1950,
+            max: 2025
+        }
+    };
 
-        let myTileset;
-        const appState = { filters: {}, searchQuery: '', colorizeByDate: false };
+    const appState = { filters: {}, searchQuery: '', colorizeByDate: false };
+    let myTileset;
 
-        // ===================================================================================
-        // --- 2. CORE LOGIC: Dynamically builds styles based on the CONFIG and appState ---
-        // ===================================================================================
-        function updateTilesetStyle() {
-            if (!myTileset) return;
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+        timeline: false, animation: false, baseLayerPicker: false, navigationHelpButton: false,
+        geocoder: false, homeButton: false, infoBox: false, sceneModePicker: false, selectionIndicator: false
+    });
 
-            // PART A: Build the visibility expression ('show') from filters
-            let showConditions = [];
-            for (const key in appState.filters) {
-                const value = appState.filters[key];
-                if (!value) continue;
+    window.viewer = viewer;
 
-                const propConfig = CONFIG.filterableProperties.find(p => p.propertyName === key);
-                if (!propConfig) continue;
+    async function loadTileset() {
+        myTileset = await Cesium.Cesium3DTileset.fromUrl('YOUR_TILESET_URL_HERE');
+        viewer.scene.primitives.add(myTileset);
+        viewer.zoomTo(myTileset);
 
-                const propName = propConfig.propertyName;
-                const propExpr = /^[a-zA-Z0-9_]+$/.test(propName) ? `\${${propName}}` : `getProperty('${propName}')`;
-                
-                if (propConfig.type === 'numeric') {
-                    showConditions.push(`${propExpr} === ${Number(value)}`);
-                } else {
-                    showConditions.push(`${propExpr} === '${value}'`);
-                }
-            }
-            const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
+        buildFilterUI();
+        updateTilesetStyle();
+        populateAutocompleteOptionsFromTileset();
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
 
-            // PART B: Build the color expression
-            const dateRange = CONFIG.date.max - CONFIG.date.min;
-            // CORRECTED: This expression now correctly extracts the year from a string like "2013-06-30..."
-            // It also safely handles cases where the date property might be missing for a feature.
-            const dateColorExpr = `{
-                "expression": "const dateString = \${${CONFIG.date.propertyName}}; if(!dateString) { return color('white'); } const match = regExp('^(\\\\d{4})').exec(dateString); const year = (match === null) ? 0 : Number(match[1]); if (year === 0) { return color('white'); } return color('red').lerp(color('lime'), (year - ${CONFIG.date.min}) / ${dateRange})",
-                "defines": {}
-            }`;
-            
-            let colorFinalExpression = appState.colorizeByDate ? dateColorExpr : "color('white')";
+    function updateTilesetStyle() {
+        if (!myTileset) return;
+        const filters = Object.entries(appState.filters)
+            .filter(([_, v]) => v)
+            .map(([k, v]) => {
+                const prop = CONFIG.filterableProperties.find(p => p.propertyName === k);
+                const expr = /^[a-zA-Z0-9_]+$/.test(k) ? `\${${k}}` : `getProperty('${k}')`;
+                return prop.type === 'numeric' ? `${expr} === ${v}` : `${expr} === '${v}'`;
+            });
 
-            if (appState.searchQuery) {
-                const isNumericSearch = !isNaN(parseFloat(appState.searchQuery)) && isFinite(appState.searchQuery);
-                const searchValue = isNumericSearch ? Number(appState.searchQuery) : `'${appState.searchQuery}'`;
-                
-                // CORRECTED: Now searches both PR1 and PR2
-                const searchCond = `(\${${CONFIG.search.PR1}} === ${searchValue}) || (\${${CONFIG.search.PR2}} === ${searchValue})`;
-                
-                if (appState.colorizeByDate) {
-                    // If colorizing by date, embed the search as a condition
-                    colorFinalExpression = `{
-                        "expression": "if(${searchCond}) { return color('yellow'); } ${dateColorExpr.expression.substring(1)}",
-                        "defines": {}
-                    }`;
-                } else {
-                    // Otherwise, just use the search condition
-                    colorFinalExpression = `Boolean(${searchCond}) ? color('yellow') : color('white')`;
-                }
-            }
+        const show = filters.length ? filters.join(' && ') : 'true';
+        const dateExpr = `{
+            "expression": "const d = \${${CONFIG.date.propertyName}}; if(!d) return color('white'); const y = parseInt(d); return color('red').lerp(color('lime'), (y - ${CONFIG.date.min}) / ${CONFIG.date.max - CONFIG.date.min})"
+        }`;
 
-            // PART C: Apply the final combined style
-            // Note: Cesium style can be a string or an object with defines/expression
-            let styleObject;
-            if (typeof colorFinalExpression === 'string') {
-                styleObject = { show: showExpression, color: colorFinalExpression };
+        let color = appState.colorizeByDate ? JSON.parse(dateExpr) : "color('white')";
+
+        if (appState.searchQuery) {
+            const val = appState.searchQuery;
+            const cond = `(\${${CONFIG.search.PR1}} === '${val}' || \${${CONFIG.search.PR2}} === '${val}')`;
+            if (typeof color === 'string') {
+                color = `(${cond}) ? color('yellow') : ${color}`;
             } else {
-                styleObject = { show: showExpression, color: JSON.parse(colorFinalExpression) };
-            }
-            myTileset.style = new Cesium.Cesium3DTileStyle(styleObject);
-        }
-
-        // ===================================================================================
-        // --- 3. UI GENERATION: Builds the HTML controls based on the CONFIG object ---
-        // ===================================================================================
-        function buildFilterUI() {
-            const container = document.getElementById('filter-container');
-            container.innerHTML = '';
-
-            CONFIG.filterableProperties.forEach(prop => {
-                const item = document.createElement('div');
-                item.className = 'filter-item';
-                const label = document.createElement('label');
-                label.htmlFor = `filter-${prop.propertyName}`;
-                label.textContent = prop.displayName;
-                item.appendChild(label);
-
-                let control;
-                if (prop.type === 'select') {
-                    control = document.createElement('select');
-                    const defaultOption = document.createElement('option');
-                    defaultOption.value = '';
-                    defaultOption.textContent = `All ${prop.displayName}s`;
-                    control.appendChild(defaultOption);
-                    prop.options.forEach(opt => {
-                        const option = document.createElement('option');
-                        option.value = opt;
-                        option.textContent = opt;
-                        control.appendChild(option);
-                    });
-                } else {
-                    control = document.createElement('input');
-                    control.type = 'text';
-                    control.placeholder = `Enter ${prop.displayName}`;
-                }
-
-                control.id = `filter-${prop.propertyName}`;
-                control.addEventListener('change', () => {
-                    appState.filters[prop.propertyName] = control.value;
-                    updateTilesetStyle();
-                });
-                item.appendChild(control);
-                container.appendChild(item);
-            });
-        }
-        
-        // ===================================================================================
-        // --- 4. MAIN APPLICATION SETUP ---
-        // ===================================================================================
-        async function main() {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            try {
-                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
-
-                const viewer = new Cesium.Viewer("cesiumContainer", { timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false, geocoder: true, creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false });
-                
-                // --- DEBUGGING SNIPPET: Click to see feature properties ---
-                const clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-                clickHandler.setInputAction(function (click) {
-                    const pickedFeature = viewer.scene.pick(click.position);
-                    if (pickedFeature) {
-                        console.log("INSPECTED FEATURE PROPERTIES:");
-                        const propertyIds = pickedFeature.getPropertyIds();
-                        const properties = {};
-                        for (let i = 0; i < propertyIds.length; i++) {
-                            const propertyId = propertyIds[i];
-                            properties[propertyId] = pickedFeature.getProperty(propertyId);
-                        }
-                        console.table(properties);
-                    } else {
-                        console.log("No feature picked.");
-                    }
-                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-                // --- END DEBUGGING SNIPPET ---
-
-                viewer.scene.globe.enableLighting = true;
-
-                loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
-                await Cesium.createWorldTerrainAsync().then(tp => { viewer.scene.terrainProvider = tp; });
-
-                loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
-                myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
-                viewer.scene.primitives.add(myTileset);
-                
-                buildFilterUI();
-                setupEventListeners();
-                updateTilesetStyle();
-
-                loadingOverlay.querySelector('h1').textContent = "Positioning Camera...";
-                await viewer.zoomTo(myTileset);
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => { loadingOverlay.style.display = 'none'; }, 500);
-
-            } catch (error) {
-                console.error("Critical error during Cesium setup:", error);
-                loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message}`;
+                color.expression = `if (${cond}) return color('yellow'); else ${color.expression}`;
             }
         }
 
-        function setupEventListeners() {
-            document.getElementById('prSearchInput').addEventListener('input', (event) => {
-                appState.searchQuery = event.target.value;
+        myTileset.style = new Cesium.Cesium3DTileStyle({ show, color });
+    }
+
+    function buildFilterUI() {
+        const container = document.getElementById('filter-container');
+        container.innerHTML = '';
+
+        CONFIG.filterableProperties.forEach(p => {
+            const label = document.createElement('label');
+            label.textContent = p.displayName;
+            const input = document.createElement('input');
+            input.id = `filter-${p.propertyName}`;
+            input.placeholder = `Filter ${p.displayName}`;
+            input.addEventListener('change', () => {
+                appState.filters[p.propertyName] = input.value;
                 updateTilesetStyle();
+                zoomToMatchingFeature(p.propertyName, input.value);
             });
 
-            document.getElementById('colorizeDateBtn').addEventListener('click', () => {
-                appState.colorizeByDate = !appState.colorizeByDate;
-                updateTilesetStyle();
-            });
+            if (p.type === 'numeric') {
+                input.setAttribute('list', `datalist-${p.propertyName}`);
+                const dl = document.createElement('datalist');
+                dl.id = `datalist-${p.propertyName}`;
+                container.appendChild(dl);
+            }
 
-            document.getElementById('reset-filters-btn').addEventListener('click', () => {
-                appState.filters = {};
-                appState.searchQuery = '';
-                appState.colorizeByDate = false;
-                
-                document.getElementById('prSearchInput').value = '';
-                document.querySelectorAll('#filter-container select, #filter-container input').forEach(el => el.value = '');
-                
-                updateTilesetStyle();
-            });
-        }
-        
-        main();
+            container.appendChild(label);
+            container.appendChild(input);
+        });
+    }
 
-    </script>
-</body>
-</html>
+    function populateAutocompleteOptionsFromTileset() {
+        const seen = {};
+
+        myTileset.tileVisible.addEventListener(tile => {
+            const content = tile.content;
+            for (let i = 0; i < content.featuresLength; i++) {
+                const f = content.getFeature(i);
+                CONFIG.filterableProperties
