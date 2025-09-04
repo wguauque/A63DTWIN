@@ -41,7 +41,7 @@
 
     <div id="toolbar">
         <span class="toolbar-group-label">Search & View</span>
-        <input type="text" id="prSearchInput" placeholder="Search by PR (e.g., 105+500)">
+        <input type="text" id="prSearchInput" placeholder="Search by PR (e.g., 45000)">
         <button id="colorizeDateBtn">Toggle Date Colors</button>
 
         <span class="toolbar-group-label">Filters</span>
@@ -52,11 +52,6 @@
     <script>
         // ===================================================================================
         // --- 1. CENTRAL CONFIGURATION: The single source of truth for your data model ---
-        //
-        // HOW TO CUSTOMIZE:
-        // 1. Update 'propertyName' to EXACTLY match the name in your 3D tileset data.
-        // 2. Update the 'options' array with all possible values for your dropdown filters.
-        // 3. Set the 'type' to 'string', 'numeric', or 'select'.
         // ===================================================================================
         const CONFIG = {
             filterableProperties: [
@@ -64,13 +59,28 @@
                     propertyName: 'ENTREPRISE',
                     displayName: 'Company',
                     type: 'select',
-                    options: ['COLAS', 'EUROVIA', 'EIFFAGE', 'Other'] // <-- ADD ALL COMPANY NAMES HERE
+                    options: [
+                        'COLAS SO',
+                        'GIE A63',
+                        'GIE-COLAS SO',
+                        'GPT  COLAS-MALLET-SIORAT',
+                        'LAFITTE TP',
+                        'PRESTATAIRE PREMIER GER'
+                    ]
                 },
                 {
                     propertyName: 'TYPE_COUCH',
                     displayName: 'Layer Type',
                     type: 'select',
-                    options: ['BBSG', 'GB', 'GNT', 'EME'] // <-- ADD ALL LAYER TYPES HERE
+                    options: [
+                        'Arase',
+                        'Base',
+                        'couche de forme',
+                        'Fondations',
+                        'Forme',
+                        'Liaison',
+                        'Roulement'
+                    ]
                 },
                 {
                     propertyName: 'N°_ORDRE',
@@ -84,8 +94,7 @@
             },
             date: {
                 propertyName: 'DATE_MS',
-                // These values can be adjusted to fit your data's date range
-                min: 1640995200000, // Jan 1, 2022 in milliseconds
+                min: -631152000000, // Jan 1, 1950 in milliseconds
                 max: 1767225600000, // Jan 1, 2026 in milliseconds
             }
         };
@@ -193,5 +202,63 @@
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
-                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
-                const viewer = new Cesium.Viewer("cesiumContainer", { timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false, geocoder: true, creditContainer: document.createElement("div"), infoBox
+                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzINIIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
+                const viewer = new Cesium.Viewer("cesiumContainer", { timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false, geocoder: true, creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false });
+                viewer.scene.globe.enableLighting = true;
+
+                loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
+                await Cesium.createWorldTerrainAsync().then(tp => { viewer.scene.terrainProvider = tp; });
+
+                loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
+                myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
+                viewer.scene.primitives.add(myTileset);
+                
+                // Dynamically build UI controls from the CONFIG
+                buildFilterUI();
+                // Set up event listeners for non-dynamic controls
+                setupEventListeners();
+
+                updateTilesetStyle(); // Apply initial style
+
+                loadingOverlay.querySelector('h1').textContent = "Positioning Camera...";
+                await viewer.zoomTo(myTileset);
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => { loadingOverlay.style.display = 'none'; }, 500);
+
+            } catch (error) {
+                console.error("Critical error during Cesium setup:", error);
+                loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message}`;
+            }
+        }
+
+        function setupEventListeners() {
+            document.getElementById('prSearchInput').addEventListener('input', (event) => {
+                appState.searchQuery = event.target.value;
+                updateTilesetStyle();
+            });
+
+            document.getElementById('colorizeDateBtn').addEventListener('click', () => {
+                appState.colorizeByDate = !appState.colorizeByDate;
+                updateTilesetStyle();
+            });
+
+            document.getElementById('reset-filters-btn').addEventListener('click', () => {
+                // Reset state
+                appState.filters = {};
+                appState.searchQuery = '';
+                appState.colorizeByDate = false;
+                
+                // Reset UI
+                document.getElementById('prSearchInput').value = '';
+                document.querySelectorAll('#filter-container select, #filter-container input').forEach(el => el.value = '');
+                
+                updateTilesetStyle();
+            });
+        }
+        
+        // --- Run the application ---
+        main();
+
+    </script>
+</body>
+</html>
