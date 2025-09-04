@@ -85,7 +85,7 @@
                 {
                     propertyName: 'N°_ORDRE',
                     displayName: 'Order Number',
-                    type: 'numeric' // This will be treated as a number
+                    type: 'numeric'
                 }
             ],
             search: {
@@ -113,20 +113,18 @@
             let showConditions = [];
             for (const key in appState.filters) {
                 const value = appState.filters[key];
-                if (!value) continue; // Skip if filter is empty
+                if (!value) continue;
 
-                // Find the property's configuration
                 const propConfig = CONFIG.filterableProperties.find(p => p.propertyName === key);
                 if (!propConfig) continue;
 
                 const propName = propConfig.propertyName;
                 const propExpr = /^[a-zA-Z0-9_]+$/.test(propName) ? `\${${propName}}` : `getProperty('${propName}')`;
                 
-                // IMPORTANT: Correctly format the comparison based on data type
                 if (propConfig.type === 'numeric') {
-                    showConditions.push(`${propExpr} === ${Number(value)}`); // Numeric comparison
+                    showConditions.push(`${propExpr} === ${Number(value)}`);
                 } else {
-                    showConditions.push(`${propExpr} === '${value}'`); // String comparison
+                    showConditions.push(`${propExpr} === '${value}'`);
                 }
             }
             const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
@@ -154,7 +152,7 @@
         // ===================================================================================
         function buildFilterUI() {
             const container = document.getElementById('filter-container');
-            container.innerHTML = ''; // Clear previous UI
+            container.innerHTML = '';
 
             CONFIG.filterableProperties.forEach(prop => {
                 const item = document.createElement('div');
@@ -179,7 +177,7 @@
                         option.textContent = opt;
                         control.appendChild(option);
                     });
-                } else { // 'string' or 'numeric'
+                } else {
                     control = document.createElement('input');
                     control.type = 'text';
                     control.placeholder = `Enter ${prop.displayName}`;
@@ -202,7 +200,9 @@
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
-                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzINIIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
+                // IMPORTANT: This is your personal access token.
+                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxZTgxOWFhZS1mZTcxLTQzMWYtOTA1Yi02YjYxODkwZDMxNWIiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDMwODY5NzR9.DLaN5FcVhNc_fc35YpFKzoHr3_q6tuEqf6jK-guXolI";
+
                 const viewer = new Cesium.Viewer("cesiumContainer", { timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false, geocoder: true, creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false });
                 viewer.scene.globe.enableLighting = true;
 
@@ -213,12 +213,9 @@
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
                 viewer.scene.primitives.add(myTileset);
                 
-                // Dynamically build UI controls from the CONFIG
                 buildFilterUI();
-                // Set up event listeners for non-dynamic controls
                 setupEventListeners();
-
-                updateTilesetStyle(); // Apply initial style
+                updateTilesetStyle();
 
                 loadingOverlay.querySelector('h1').textContent = "Positioning Camera...";
                 await viewer.zoomTo(myTileset);
@@ -243,12 +240,10 @@
             });
 
             document.getElementById('reset-filters-btn').addEventListener('click', () => {
-                // Reset state
                 appState.filters = {};
                 appState.searchQuery = '';
                 appState.colorizeByDate = false;
                 
-                // Reset UI
                 document.getElementById('prSearchInput').value = '';
                 document.querySelectorAll('#filter-container select, #filter-container input').forEach(el => el.value = '');
                 
