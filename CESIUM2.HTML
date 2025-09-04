@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale-1, maximum-scale=1, minimum-scale=1, user-scalable=no">
     <title>A63 Digital Twin - 3D Model</title>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
@@ -13,7 +13,7 @@
         #cesiumContainer { position: absolute; top: 0; left: 0; height: 100%; width: 100%; }
         #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30,30,30,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.5s ease; }
         #headerLogos { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: rgba(255, 255, 255, 0.95); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1001; height: 70px; box-sizing: border-box; }
-        #logoAtlandes, #logoEelisa { height: 50px; }
+        #logoAtlandes, #logoEelisa { height: 45px; width: auto; } /* Adjusted logo height */
         .cesium-widget-credits { display: none !important; }
         
         #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(45,45,45,0.9); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 1000; max-width: 280px; color: white; }
@@ -53,7 +53,7 @@
 
     <div id="headerLogos">
         <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
-        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEELISA">
+        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
     </div>
 
     <div id="toolbar">
@@ -137,7 +137,7 @@
 
             let showConditions = [];
             if (appState.materialFilter) {
-                showConditions.push(`\${name_1} === '${appState.materialFilter}'`);
+                showConditions.push(`getProperty('name_1') === '${appState.materialFilter}'`);
             }
             if (appState.entrepriseFilter) {
                 showConditions.push(`getProperty('excelLayerInfoENTREPRISE') === '${appState.entrepriseFilter}'`);
@@ -147,9 +147,10 @@
 
             let colorExpression;
             if (appState.prSearch) {
-                colorExpression = `getProperty('excelLayerInfoPR_1') === '${appState.prSearch}' ? color('magenta') : defaultStyle.color.expression`;
+                // FIX: Compare properties as numbers for correctness.
+                colorExpression = `Number(getProperty('excelLayerInfoPR1')) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`;
             } else if (appState.materialSearch) {
-                colorExpression = `regExp('${appState.materialSearch}', 'i').test(\${name_1}) ? color('yellow') : defaultStyle.color.expression`;
+                colorExpression = `regExp('${appState.materialSearch}', 'i').test(getProperty('name_1')) ? color('yellow') : defaultStyle.color.expression`;
             } else {
                 colorExpression = defaultStyle.color.expression;
             }
@@ -169,8 +170,9 @@
             const lowerBound = prNumber - 500;
             const upperBound = prNumber + 500;
 
+            // FIX: Use correct property name 'excelLayerInfoPR1' and ensure numeric comparison.
             const zoomStyle = new Cesium.Cesium3DTileStyle({
-                show: `Number(getProperty('excelLayerInfoPR_1')) >= ${lowerBound} && Number(getProperty('excelLayerInfoPR_1')) < ${upperBound}`
+                show: `Number(getProperty('excelLayerInfoPR1')) >= ${lowerBound} && Number(getProperty('excelLayerInfoPR1')) < ${upperBound}`
             });
             myTileset.style = zoomStyle;
 
@@ -221,7 +223,8 @@
                 myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
 
                 const colorConditions = materialList.map((material) => {
-                    return [`\${name_1} === '${material}'`, `color('${getMaterialColor(material)}')`];
+                    // FIX: Use getProperty for consistency.
+                    return [`getProperty('name_1') === '${material}'`, `color('${getMaterialColor(material)}')`];
                 });
                 colorConditions.push([true, "color('white')"]);
                 defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
