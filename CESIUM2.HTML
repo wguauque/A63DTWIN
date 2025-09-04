@@ -82,7 +82,6 @@
             'TAB BET', 'CBX C30/37', 'CBX C25/30', 'Etanch', 'Autres'
         ];
         
-        // Dynamically generate the PR list for autocomplete
         const prList = [];
         for (let i = 34000; i <= 140000; i += 1000) {
             prList.push(i.toString());
@@ -90,9 +89,8 @@
 
         let myTileset;
         let defaultStyle;
-        let viewer; // Viewer needs to be accessible for the zoom function
+        let viewer; 
         
-        // --- Central application state ---
         const appState = {
             materialFilter: '',
             materialSearch: '',
@@ -105,16 +103,13 @@
         function updateTilesetStyle() {
             if (!myTileset || !defaultStyle) return;
 
-            // 1. SHOW LOGIC (Filtering based on material dropdown)
             let showExpression = 'true';
             if (appState.materialFilter) {
                 showExpression = `\${name_1} === '${appState.materialFilter}'`;
             }
 
-            // 2. COLOR LOGIC (Highlighting, with PR search taking precedence)
             let colorExpression;
             if (appState.prSearch) {
-                // The property name from the data is 'excelLayerInfoPR_1'
                 colorExpression = `getProperty('excelLayerInfoPR_1') === '${appState.prSearch}' ? color('magenta') : defaultStyle.color.expression`;
             } else if (appState.materialSearch) {
                 colorExpression = `regExp('${appState.materialSearch}', 'i').test(\${name_1}) ? color('yellow') : defaultStyle.color.expression`;
@@ -137,27 +132,22 @@
             const lowerBound = prNumber - 500;
             const upperBound = prNumber + 500;
 
-            // Temporarily apply a style that shows ONLY features within the desired PR range.
             const zoomStyle = new Cesium.Cesium3DTileStyle({
                 show: `Number(getProperty('excelLayerInfoPR_1')) >= ${lowerBound} && Number(getProperty('excelLayerInfoPR_1')) < ${upperBound}`
             });
             myTileset.style = zoomStyle;
 
             try {
-                // Fly to the overall tileset area with a new camera offset that zooms in closer
-                // and looks down. This is a more robust approach than the previous zoom.
                 await viewer.flyTo(myTileset, {
                     duration: 1.5,
-                    offset: new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 3000) // Look down from 3km
+                    offset: new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 1500) // Look down from 1.5km
                 });
             } catch (error) {
-                console.error("Error during zoomTo operation:", error);
+                console.error("Error during flyTo operation:", error);
             } finally {
-                // IMPORTANT: Restore the original interactive style after the zoom animation.
                 updateTilesetStyle();
             }
         }
-
 
         // ===================================================================================
         // --- MAIN APPLICATION SETUP ---
@@ -180,17 +170,16 @@
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
                 viewer.scene.primitives.add(myTileset);
                 
-                // Wait for the tileset to be ready before adjusting its position
                 await myTileset.readyPromise;
 
-                // Manually adjust the height of the model to sit on the terrain correctly.
-                // This is more reliable than clampToGround for some datasets.
-                const heightOffset = 27.0; // Value in meters to raise the model.
+                // Dynamically adjust model height based on terrain.
                 const cartographic = Cesium.Cartographic.fromCartesian(myTileset.boundingSphere.center);
-                const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0.0);
-                const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, heightOffset);
-                const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
-                myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
+                const [updatedCartographic] = await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, [cartographic]);
+                const terrainHeight = updatedCartographic.height;
+                const modelHeight = cartographic.height;
+                const heightCorrection = terrainHeight - modelHeight + 1.0; // Add 1m buffer
+                const translation = Cesium.Cartesian3.fromElements(0, 0, heightCorrection);
+                Cesium.Matrix4.multiplyByTranslation(myTileset.modelMatrix, translation, myTileset.modelMatrix);
 
                 const colorConditions = materialList.map((material) => {
                     const color = Cesium.Color.fromRandom({ alpha: 1.0 });
@@ -235,7 +224,6 @@
             const materialFilter = document.getElementById('material-filter');
             const materialSearch = document.getElementById('material-search');
 
-            // --- PR Search with Autocomplete ---
             prSearchInput.addEventListener('input', () => {
                 const value = prSearchInput.value.toLowerCase();
                 autocompleteResults.innerHTML = '';
@@ -253,37 +241,30 @@
                     item.addEventListener('click', () => {
                         prSearchInput.value = pr;
                         autocompleteResults.innerHTML = '';
-                        // A PR search overrides a material highlight search
                         materialSearch.value = '';
                         appState.materialSearch = '';
                         appState.prSearch = pr;
                         
-                        // First, update the style to highlight the feature
                         updateTilesetStyle();
-                        // Then, zoom the camera to it
                         zoomToFeature(pr);
                     });
                     autocompleteResults.appendChild(item);
                 });
             });
 
-            // --- Material Dropdown Filter ---
             materialFilter.addEventListener('change', () => {
                 appState.materialFilter = materialFilter.value;
                 updateTilesetStyle();
             });
 
-            // --- Material Highlight Search ---
             materialSearch.addEventListener('input', () => {
-                // A material highlight search overrides a PR search
                 prSearchInput.value = '';
                 autocompleteResults.innerHTML = '';
                 appState.prSearch = '';
-                appState.materialSearch = value;
+                appState.materialSearch = materialSearch.value;
                 updateTilesetStyle();
             });
             
-            // --- Reset Button ---
             document.getElementById('reset-btn').addEventListener('click', () => {
                 materialFilter.value = '';
                 materialSearch.value = '';
