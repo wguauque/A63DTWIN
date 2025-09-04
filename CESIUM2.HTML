@@ -138,13 +138,13 @@
             myTileset.style = zoomStyle;
 
             try {
-                await viewer.flyTo(myTileset, {
-                    duration: 1.5,
-                    offset: new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 1500) // Look down from 1.5km
-                });
+                // Use zoomTo for a more direct and reliable framing of the visible features.
+                // The HeadingPitchRange tells it to look straight down and calculate the best distance.
+                await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 0));
             } catch (error) {
-                console.error("Error during flyTo operation:", error);
+                console.error("Error during zoomTo operation:", error);
             } finally {
+                // Restore the interactive style after the zoom is complete.
                 updateTilesetStyle();
             }
         }
@@ -172,14 +172,14 @@
                 
                 await myTileset.readyPromise;
 
-                // Dynamically adjust model height based on terrain.
+                // Apply a fixed vertical offset to raise the model.
+                // This is a simpler and more reliable approach than dynamic terrain sampling.
+                const heightOffset = 50.0; // Raise the model by 50 meters.
                 const cartographic = Cesium.Cartographic.fromCartesian(myTileset.boundingSphere.center);
-                const [updatedCartographic] = await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, [cartographic]);
-                const terrainHeight = updatedCartographic.height;
-                const modelHeight = cartographic.height;
-                const heightCorrection = terrainHeight - modelHeight + 1.0; // Add 1m buffer
-                const translation = Cesium.Cartesian3.fromElements(0, 0, heightCorrection);
-                Cesium.Matrix4.multiplyByTranslation(myTileset.modelMatrix, translation, myTileset.modelMatrix);
+                const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0.0);
+                const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, heightOffset);
+                const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
+                myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
 
                 const colorConditions = materialList.map((material) => {
                     const color = Cesium.Color.fromRandom({ alpha: 1.0 });
@@ -245,6 +245,8 @@
                         appState.materialSearch = '';
                         appState.prSearch = pr;
                         
+                        // Style is updated first to ensure the highlight is visible,
+                        // then the zoom action is called.
                         updateTilesetStyle();
                         zoomToFeature(pr);
                     });
