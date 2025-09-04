@@ -145,8 +145,8 @@
 
             try {
                 // Zoom to the tileset. Because only features in the range are visible,
-                // the camera will focus on that area.
-                await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, -0.5, myTileset.boundingSphere.radius * 2.0));
+                // Cesium will calculate the best view to frame them.
+                await viewer.zoomTo(myTileset);
             } catch (error) {
                 console.error("Error during zoomTo operation:", error);
             } finally {
@@ -169,9 +169,17 @@
                     creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false 
                 });
                 viewer.scene.globe.enableLighting = true;
+                
+                loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
+                viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
+
 
                 loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
+                
+                // Drape the model onto the terrain
+                myTileset.clampToGround = true;
+
                 viewer.scene.primitives.add(myTileset);
                 
                 const colorConditions = materialList.map((material) => {
