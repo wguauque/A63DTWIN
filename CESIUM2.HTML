@@ -100,6 +100,35 @@
         // ===================================================================================
         // --- STYLE & VIEW LOGIC ---
         // ===================================================================================
+        
+        /**
+         * Returns a CSS color string based on the material name for thematic mapping.
+         * @param {string} material The name of the material.
+         * @returns {string} A CSS color string.
+         */
+        function getMaterialColor(material) {
+            const upperMaterial = material.toUpperCase();
+            if (upperMaterial.includes('BBSG') || upperMaterial.includes('BBTM') || upperMaterial.includes('BBME') || upperMaterial.includes('EME') || upperMaterial.includes('BBDR') || upperMaterial.includes('ACCOUSTIQ') || upperMaterial.includes('ACC')) {
+                return Cesium.Color.DARKSLATEGRAY.toCssColorString(); // Asphalt layers
+            }
+            if (upperMaterial.includes('GB') || upperMaterial.includes('GNT')) {
+                return Cesium.Color.GRAY.toCssColorString(); // Base layers
+            }
+            if (upperMaterial.includes('SB') || upperMaterial.includes('GTLH') || upperMaterial.includes('FORME')) {
+                return Cesium.Color.BURLYWOOD.toCssColorString(); // Subbase layers
+            }
+            if (upperMaterial.includes('BET') || upperMaterial.includes('CBX')) {
+                return Cesium.Color.LIGHTGRAY.toCssColorString(); // Concrete
+            }
+            if (upperMaterial.includes('GEOTEXTILE')) {
+                return Cesium.Color.WHITESMOKE.toCssColorString();
+            }
+            if (upperMaterial.includes('ETANCH')) {
+                return Cesium.Color.STEELBLUE.toCssColorString();
+            }
+            return Cesium.Color.SEAGREEN.toCssColorString(); // Default for 'Autres', etc.
+        }
+
         function updateTilesetStyle() {
             if (!myTileset || !defaultStyle) return;
 
@@ -123,7 +152,7 @@
             });
         }
 
-        async function zoomToFeature(prValue) {
+        function zoomToFeature(prValue) {
             if (!myTileset || !viewer || !prValue) return;
 
             const prNumber = Number(prValue);
@@ -137,17 +166,19 @@
             });
             myTileset.style = zoomStyle;
 
-            try {
-                // Use zoomTo for a more direct and reliable framing of the visible features.
-                // The HeadingPitchRange tells it to look straight down and calculate the best distance.
-                await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 0));
-            } catch (error) {
-                console.error("Error during zoomTo operation:", error);
-            } finally {
-                // Restore the interactive style after the zoom is complete.
-                updateTilesetStyle();
-            }
+            // Add a short delay to allow the scene to update with the new style before zooming.
+            // This makes the zoom action more reliable.
+            setTimeout(async () => {
+                try {
+                    await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 0));
+                } catch (error) {
+                    console.error("Error during zoomTo operation:", error);
+                } finally {
+                    updateTilesetStyle(); // Restore the interactive style after the zoom.
+                }
+            }, 100); // 100ms delay
         }
+
 
         // ===================================================================================
         // --- MAIN APPLICATION SETUP ---
@@ -173,7 +204,6 @@
                 await myTileset.readyPromise;
 
                 // Apply a fixed vertical offset to raise the model.
-                // This is a simpler and more reliable approach than dynamic terrain sampling.
                 const heightOffset = 50.0; // Raise the model by 50 meters.
                 const cartographic = Cesium.Cartographic.fromCartesian(myTileset.boundingSphere.center);
                 const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0.0);
@@ -181,11 +211,11 @@
                 const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
                 myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
 
+                // Build the default style using the new thematic color function.
                 const colorConditions = materialList.map((material) => {
-                    const color = Cesium.Color.fromRandom({ alpha: 1.0 });
-                    return [`\${name_1} === '${material}'`, `color('${color.toCssColorString()}')`];
+                    return [`\${name_1} === '${material}'`, `color('${getMaterialColor(material)}')`];
                 });
-                colorConditions.push([true, "color('white')"]);
+                colorConditions.push([true, "color('white')"]); // Fallback color
                 defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
                 myTileset.style = defaultStyle;
 
@@ -245,8 +275,6 @@
                         appState.materialSearch = '';
                         appState.prSearch = pr;
                         
-                        // Style is updated first to ensure the highlight is visible,
-                        // then the zoom action is called.
                         updateTilesetStyle();
                         zoomToFeature(pr);
                     });
@@ -278,6 +306,7 @@
                 appState.prSearch = '';
                 
                 myTileset.style = defaultStyle;
+                viewer.zoomTo(myTileset); // Also reset the camera view
             });
         }
         
