@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale-1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
     <title>A63 Digital Twin - 3D Model</title>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
@@ -137,20 +137,19 @@
 
             let showConditions = [];
             if (appState.materialFilter) {
-                showConditions.push(`getProperty('name_1') === '${appState.materialFilter}'`);
+                showConditions.push(`\${name_1} === '${appState.materialFilter}'`);
             }
             if (appState.entrepriseFilter) {
-                showConditions.push(`getProperty('excelLayerInfoENTREPRISE') === '${appState.entrepriseFilter}'`);
+                showConditions.push(`\${excelLayerInfoENTREPRISE} === '${appState.entrepriseFilter}'`);
             }
 
             const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
 
             let colorExpression;
             if (appState.prSearch) {
-                // FIX: Compare properties as numbers for correctness.
-                colorExpression = `Number(getProperty('excelLayerInfoPR1')) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`;
+                colorExpression = `Number(\${excelLayerInfoPR1}) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`;
             } else if (appState.materialSearch) {
-                colorExpression = `regExp('${appState.materialSearch}', 'i').test(getProperty('name_1')) ? color('yellow') : defaultStyle.color.expression`;
+                colorExpression = `regExp('${appState.materialSearch}', 'i').test(\${name_1}) ? color('yellow') : defaultStyle.color.expression`;
             } else {
                 colorExpression = defaultStyle.color.expression;
             }
@@ -170,13 +169,11 @@
             const lowerBound = prNumber - 500;
             const upperBound = prNumber + 500;
 
-            // FIX: Use correct property name 'excelLayerInfoPR1' and ensure numeric comparison.
             const zoomStyle = new Cesium.Cesium3DTileStyle({
-                show: `Number(getProperty('excelLayerInfoPR1')) >= ${lowerBound} && Number(getProperty('excelLayerInfoPR1')) < ${upperBound}`
+                show: `Number(\${excelLayerInfoPR1}) >= ${lowerBound} && Number(\${excelLayerInfoPR1}) < ${upperBound}`
             });
             myTileset.style = zoomStyle;
 
-            // Using a longer delay and flyTo for a smoother, more reliable zoom.
             setTimeout(async () => {
                 try {
                     await viewer.flyTo(myTileset, { 
@@ -186,9 +183,9 @@
                 } catch (error) {
                     console.error("Error during flyTo operation:", error);
                 } finally {
-                    updateTilesetStyle(); // Restore the interactive style after the zoom.
+                    updateTilesetStyle();
                 }
-            }, 250); // 250ms delay
+            }, 250); 
         }
 
 
@@ -223,8 +220,7 @@
                 myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
 
                 const colorConditions = materialList.map((material) => {
-                    // FIX: Use getProperty for consistency.
-                    return [`getProperty('name_1') === '${material}'`, `color('${getMaterialColor(material)}')`];
+                    return [`\${name_1} === '${material}'`, `color('${getMaterialColor(material)}')`];
                 });
                 colorConditions.push([true, "color('white')"]);
                 defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
@@ -321,6 +317,8 @@
                 appState.entrepriseFilter = entrepriseFilter.value;
                 updateTilesetStyle();
             });
+
+
 
             materialSearch.addEventListener('input', () => {
                 prSearchInput.value = '';
