@@ -2,163 +2,163 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
     <title>A63 Digital Twin - 3D Model</title>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
     <style>
-        body { margin: 0; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow: hidden; }
         #cesiumContainer { position: absolute; top: 0; left: 0; height: 100%; width: 100%; }
         #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30,30,30,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.5s ease; }
         #headerLogos { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: rgba(255, 255, 255, 0.95); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1001; height: 70px; box-sizing: border-box; }
         #logoAtlandes, #logoEelisa { height: 50px; }
-        #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(45,45,45,0.9); padding: 10px; border-radius: 8px; max-width: 280px; color: white; z-index: 1000; }
+        .cesium-widget-credits { display: none !important; }
+        
+        #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(45,45,45,0.9); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 1000; max-width: 280px; color: white; }
         .toolbar-group-label { font-weight: bold; font-size: 0.95em; color: #00bcd4; margin-top: 12px; margin-bottom: 8px; padding-left: 2px; display: block; border-bottom: 1px solid #444; padding-bottom: 3px; }
-        #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; }
-        #toolbar button:hover { background-color: #5a5a5a; }
+        #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; box-sizing: border-box; }
+        #toolbar button { background-color: #444; cursor: pointer; text-align: left; }
     </style>
 </head>
 <body>
 
-<div id="cesiumContainer"></div>
-<div id="loadingOverlay"><h1>Loading Digital Twin...</h1></div>
+    <div id="cesiumContainer"></div>
+    <div id="loadingOverlay"><h1>Loading Digital Twin...</h1></div>
 
-<div id="headerLogos">
-    <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
-    <nav><a href="#">3D Model</a></nav>
-    <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
-</div>
+    <div id="headerLogos">
+        <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
+        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
+    </div>
 
-<div id="toolbar">
-    <span class="toolbar-group-label">Search & View</span>
-    <input type="text" id="prSearchInput" placeholder="Search by PR (e.g., 198110)">
-    <button id="colorizeDateBtn">Toggle Date Colors</button>
+    <div id="toolbar">
+        <span class="toolbar-group-label">Filter & Search by Material</span>
+        <label for="material-filter" style="font-size:0.85em; margin-left: 2px;">Filter by Material (name_1)</label>
+        <select id="material-filter"></select>
+        
+        <label for="material-search" style="font-size:0.85em; margin-left: 2px; margin-top: 10px; display: block;">Search & Highlight (name_1)</label>
+        <input type="text" id="material-search" placeholder="e.g., BBSG">
+        
+        <button id="reset-btn" style="margin-top: 10px;">Reset View</button>
+    </div>
 
-    <span class="toolbar-group-label">Filters</span>
-    <div id="filter-container"></div>
-    <button id="reset-filters-btn">Reset All Filters & View</button>
-</div>
+    <script>
+        // --- This list contains all possible values for the 'name_1' property ---
+        // --- It is used to build the dropdown and the default colors ---
+        const materialList = [
+            'BBSG 0/14', 'BBSG', 'BBSG 0/10 R50', 'GNT', 'GNT 0/31.5', 'GB', 
+            'GB 0/14 R50', 'GB 014 OPTIBASE', 'SB', 'GTLH', 'geotextile classe 7',
+            'BBTM 0/10', 'BBTM 0/10 R20', 'EME2 0/14R30', 'BBME3 R30', 'BBDr 0/10',
+            'BB 0/6 acc', 'BB Accoustiq', 'BBME 0/10R15', 'BBME 0/10 R30', 'EME 0/14 R30', 'BBME',
+            'TAB BET', 'CBX C30/37', 'CBX C25/30', 'Etanch', 'Autres'
+        ];
 
-<script>
-    const CONFIG = {
-        filterableProperties: [
-            {
-                propertyName: 'excelLayerInfoENTREPRISE',
-                displayName: 'Company',
-                type: 'select',
-                options: ['COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER']
-            },
-            {
-                propertyName: 'excelLayerInfoTYPE_COUCH',
-                displayName: 'Layer Type',
-                type: 'select',
-                options: ['Arase', 'Base', 'couche de forme', 'Fondations', 'Forme', 'Liaison', 'Roulement']
-            },
-            {
-                propertyName: 'excelLayerInfoN°_ORDRE',
-                displayName: 'Order Number',
-                type: 'numeric'
-            },
-            {
-                propertyName: 'corridorModelInformationRegionName',
-                displayName: 'Region Name',
-                type: 'numeric'
-            }
-        ],
-        search: {
-            PR1: 'excelLayerInfoPR1',
-            PR2: 'excelLayerInfoPR2'
-        },
-        date: {
-            propertyName: 'excelLayerInfoDATEMS',
-            min: 1950,
-            max: 2025
-        }
-    };
+        let myTileset;
+        let defaultStyle;
 
-    const appState = { filters: {}, searchQuery: '', colorizeByDate: false };
-    let myTileset;
+        // ===================================================================================
+        // --- MAIN APPLICATION SETUP ---
+        // ===================================================================================
+        async function main() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            try {
+                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
 
-    const viewer = new Cesium.Viewer('cesiumContainer', {
-        timeline: false, animation: false, baseLayerPicker: false, navigationHelpButton: false,
-        geocoder: false, homeButton: false, infoBox: false, sceneModePicker: false, selectionIndicator: false
-    });
+                const viewer = new Cesium.Viewer("cesiumContainer", {
+                    timeline: false, animation: false, sceneModePicker: false, 
+                    baseLayerPicker: false, geocoder: true, 
+                    creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false 
+                });
+                
+                viewer.scene.globe.enableLighting = true;
 
-    window.viewer = viewer;
+                loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
+                myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
+                viewer.scene.primitives.add(myTileset);
+                
+                // --- Build a default style with unique colors for each material ---
+                const colorConditions = materialList.map((material, index) => {
+                    const color = Cesium.Color.fromRandom({ alpha: 1.0 });
+                    return [`\${name_1} === '${material}'`, `color('${color.toCssColorString()}')`];
+                });
+                colorConditions.push([true, "color('white')"]); // Default for any unlisted material
+                
+                defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
+                myTileset.style = defaultStyle;
 
-    async function loadTileset() {
-        myTileset = await Cesium.Cesium3DTileset.fromUrl('YOUR_TILESET_URL_HERE');
-        viewer.scene.primitives.add(myTileset);
-        viewer.zoomTo(myTileset);
+                // --- Setup UI ---
+                buildFilterUI();
+                setupEventListeners();
 
-        buildFilterUI();
-        updateTilesetStyle();
-        populateAutocompleteOptionsFromTileset();
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
+                loadingOverlay.querySelector('h1').textContent = "Positioning Camera...";
+                await viewer.zoomTo(myTileset);
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => { loadingOverlay.style.display = 'none'; }, 500);
 
-    function updateTilesetStyle() {
-        if (!myTileset) return;
-        const filters = Object.entries(appState.filters)
-            .filter(([_, v]) => v)
-            .map(([k, v]) => {
-                const prop = CONFIG.filterableProperties.find(p => p.propertyName === k);
-                const expr = /^[a-zA-Z0-9_]+$/.test(k) ? `\${${k}}` : `getProperty('${k}')`;
-                return prop.type === 'numeric' ? `${expr} === ${v}` : `${expr} === '${v}'`;
-            });
-
-        const show = filters.length ? filters.join(' && ') : 'true';
-        const dateExpr = `{
-            "expression": "const d = \${${CONFIG.date.propertyName}}; if(!d) return color('white'); const y = parseInt(d); return color('red').lerp(color('lime'), (y - ${CONFIG.date.min}) / ${CONFIG.date.max - CONFIG.date.min})"
-        }`;
-
-        let color = appState.colorizeByDate ? JSON.parse(dateExpr) : "color('white')";
-
-        if (appState.searchQuery) {
-            const val = appState.searchQuery;
-            const cond = `(\${${CONFIG.search.PR1}} === '${val}' || \${${CONFIG.search.PR2}} === '${val}')`;
-            if (typeof color === 'string') {
-                color = `(${cond}) ? color('yellow') : ${color}`;
-            } else {
-                color.expression = `if (${cond}) return color('yellow'); else ${color.expression}`;
+            } catch (error) {
+                console.error("Critical error during Cesium setup:", error);
+                loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message}`;
             }
         }
 
-        myTileset.style = new Cesium.Cesium3DTileStyle({ show, color });
-    }
+        function buildFilterUI() {
+            const select = document.getElementById('material-filter');
+            select.innerHTML = ''; // Clear previous options
+            
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = 'Show All Materials';
+            select.appendChild(allOption);
 
-    function buildFilterUI() {
-        const container = document.getElementById('filter-container');
-        container.innerHTML = '';
+            materialList.forEach(material => {
+                const option = document.createElement('option');
+                option.value = material;
+                option.textContent = material;
+                select.appendChild(option);
+            });
+        }
 
-        CONFIG.filterableProperties.forEach(p => {
-            const label = document.createElement('label');
-            label.textContent = p.displayName;
-            const input = document.createElement('input');
-            input.id = `filter-${p.propertyName}`;
-            input.placeholder = `Filter ${p.displayName}`;
-            input.addEventListener('change', () => {
-                appState.filters[p.propertyName] = input.value;
-                updateTilesetStyle();
-                zoomToMatchingFeature(p.propertyName, input.value);
+        function setupEventListeners() {
+            // Dropdown Filter
+            document.getElementById('material-filter').addEventListener('change', (event) => {
+                const selectedMaterial = event.target.value;
+                document.getElementById('material-search').value = ''; // Clear search box
+                
+                if (selectedMaterial === 'all') {
+                    myTileset.style = defaultStyle;
+                } else {
+                    myTileset.style = new Cesium.Cesium3DTileStyle({
+                        show: `\${name_1} === '${selectedMaterial}'`
+                    });
+                }
             });
 
-            if (p.type === 'numeric') {
-                input.setAttribute('list', `datalist-${p.propertyName}`);
-                const dl = document.createElement('datalist');
-                dl.id = `datalist-${p.propertyName}`;
-                container.appendChild(dl);
-            }
+            // Search Box
+            document.getElementById('material-search').addEventListener('input', (event) => {
+                const searchValue = event.target.value;
+                document.getElementById('material-filter').value = 'all'; // Reset dropdown
+                
+                if (!searchValue) {
+                    myTileset.style = defaultStyle;
+                    return;
+                }
 
-            container.appendChild(label);
-            container.appendChild(input);
-        });
-    }
+                myTileset.style = new Cesium.Cesium3DTileStyle({
+                    color: `regExp('${searchValue}', 'i').test(\${name_1}) ? color('yellow') : color('gray', 0.2)`
+                });
+            });
+            
+            // Reset Button
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                document.getElementById('material-filter').value = 'all';
+                document.getElementById('material-search').value = '';
+                myTileset.style = defaultStyle;
+            });
+        }
+        
+        main();
 
-    function populateAutocompleteOptionsFromTileset() {
-        const seen = {};
-
-        myTileset.tileVisible.addEventListener(tile => {
-            const content = tile.content;
-            for (let i = 0; i < content.featuresLength; i++) {
-                const f = content.getFeature(i);
-                CONFIG.filterableProperties
+    </script>
+</body>
+</html>
