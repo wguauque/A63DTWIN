@@ -1,3 +1,941 @@
+Gemini
+
+2.5 Pro
+
+
+PRO
+Conversation with Gemini
+
+/* Global */
+
+:root {
+
+    --primary-bg: #f4f7f6;
+
+    --header-bg: #ffffff;
+
+    --card-bg: #ffffff;
+
+    --text-primary: #2c3e50;
+
+    --text-secondary: #5a6e80;
+
+    --accent-color: #4682B4;
+
+    --border-color: #e2e8f0;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+
+}
+
+
+
+body {
+
+    margin: 0;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+
+    background-color: var(--primary-bg);
+
+    color: var(--text-primary);
+
+    line-height: 1.6;
+
+}
+
+
+
+/* Header */
+
+.main-header {
+
+    background-color: var(--header-bg);
+
+    border-bottom: 1px solid var(--border-color);
+
+    box-shadow: var(--shadow-sm);
+
+    padding: 0 2rem;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    height: 70px;
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 1000;
+
+}
+
+
+
+.header-brand {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 0.75rem;
+
+    font-size: 1.25rem;
+
+    font-weight: 600;
+
+    color: var(--text-primary);
+
+    text-decoration: none;
+
+}
+
+
+
+.header-brand img {
+
+    height: 32px;
+
+}
+
+
+
+.main-nav a {
+
+    color: var(--text-secondary);
+
+    text-decoration: none;
+
+    font-weight: 500;
+
+    font-size: 0.95rem;
+
+    padding: 0.5rem 1rem;
+
+    border-radius: 6px;
+
+    transition: background-color 0.2s ease, color 0.2s ease;
+
+}
+
+
+
+.main-nav a:hover {
+
+    background-color: #f0f4f8;
+
+    color: var(--text-primary);
+
+}
+
+
+
+.main-nav a.active {
+
+    background-color: var(--accent-color);
+
+    color: #ffffff;
+
+    box-shadow: var(--shadow-sm);
+
+}
+
+
+
+/* Page Layout */
+
+.page-container {
+
+    max-width: 1200px;
+
+    margin: 2rem auto;
+
+    padding: 0 2rem;
+
+}
+
+
+
+.page-title {
+
+    font-size: 2.25rem;
+
+    font-weight: 700;
+
+    margin-bottom: 0.5rem;
+
+    color: var(--text-primary);
+
+}
+
+
+
+.page-subtitle {
+
+    font-size: 1.1rem;
+
+    font-weight: 400;
+
+    color: var(--text-secondary);
+
+    margin-top: 0;
+
+    margin-bottom: 2rem;
+
+}
+
+
+
+.content-card {
+
+    background-color: var(--card-bg);
+
+    border: 1px solid var(--border-color);
+
+    border-radius: 12px;
+
+    padding: 2rem;
+
+    box-shadow: var(--shadow-md);
+
+}
+
+
+
+.content-card h3 {
+
+    margin-top: 0;
+
+    color: var(--accent-color);
+
+}
+
+
+
+.content-card p {
+
+    color: var(--text-secondary);
+
+}
+
+
+
+.button-link {
+
+    display: inline-block;
+
+    background-color: var(--accent-color);
+
+    color: #ffffff;
+
+    padding: 0.75rem 1.5rem;
+
+    border-radius: 8px;
+
+    text-decoration: none;
+
+    font-weight: 500;
+
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    box-shadow: var(--shadow-sm);
+
+}
+
+
+
+.button-link:hover {
+
+    transform: translateY(-2px);
+
+    box-shadow: var(--shadow-md);
+
+}
+
+
+
+/* Components */
+
+.component-container {
+
+    height: calc(100vh - 70px);
+
+}
+
+
+
+.powerbi-iframe {
+
+    width: 100%;
+
+    height: 100%;
+
+    border: none;
+
+}
+
+
+
+/* ArcGIS Map */
+
+#viewDiv {
+
+    padding: 0;
+
+    margin: 0;
+
+    height: 100%;
+
+    width: 100%;
+
+}
+
+
+
+#controlsDiv {
+
+    position: absolute;
+
+    top: calc(70px + 15px);
+
+    left: 15px;
+
+    background: var(--card-bg);
+
+    padding: 1rem;
+
+    z-index: 50;
+
+    box-shadow: var(--shadow-md);
+
+    border-radius: 12px;
+
+    width: 280px;
+
+    border: 1px solid var(--border-color);
+
+}
+
+
+
+#controlsDiv label {
+
+    display: block;
+
+    font-weight: 500;
+
+    font-size: 0.9rem;
+
+    color: var(--text-secondary);
+
+    margin-bottom: 0.25rem;
+
+    margin-top: 0.75rem;
+
+}
+
+
+
+#controlsDiv select,
+
+#controlsDiv input {
+
+    width: 100%;
+
+    padding: 0.5rem;
+
+    border: 1px solid var(--border-color);
+
+    border-radius: 6px;
+
+    font-size: 0.9rem;
+
+    box-sizing: border-box;
+
+}
+
+
+
+#controlsDiv #editDiv {
+
+    margin-top: 1rem;
+
+    padding-top: 1rem;
+
+    border-top: 1px solid var(--border-color);
+
+}
+
+
+
+#controlsDiv #searchResults {
+
+    margin-top: 5px;
+
+    max-height: 150px;
+
+    overflow-y: auto;
+
+    border: 1px solid var(--border-color);
+
+    border-radius: 6px;
+
+}
+
+
+
+#controlsDiv #searchResults div {
+
+    padding: 0.5rem;
+
+    cursor: pointer;
+
+}
+
+
+
+#controlsDiv #searchResults div:hover {
+
+    background-color: #f0f4f8;
+
+}
+
+
+
+Can we reeplace atlandes logo inside cesium.html for this one
+
+
+
+
+
+Show thinking
+Of course. To replace the logo in your cesium.html file with the one you provided, you'll need to edit the HTML file directly.
+
+Based on the CSS you've shared, the logo is an <img> tag within an element that has the class header-brand.
+
+Instructions
+Save the New Logo: Make sure the new logo image file, atlandes.jpg, is saved in your project folder. For simplicity, place it in the same directory as your cesium.html file.
+
+Edit cesium.html: Open your cesium.html file in a code editor.
+
+Find the Logo's <img> Tag: Look for the HTML section that defines the header. You should find an <img> tag inside an element with the class header-brand. It will look something like this:
+
+Example HTML to look for:
+
+HTML
+
+<header class="main-header">
+   <a href="#" class="header-brand">
+       <img src="path/to/your_old_logo.png" alt="Company Logo">
+       <span>ATLANDES</span>
+   </a>
+   </header>
+Update the src Attribute: Change the value of the src attribute in the <img> tag to point to your new logo file, atlandes.jpg.
+
+Before:
+
+HTML
+
+<img src="path/to/your_old_logo.png" alt="Company Logo">
+After:
+
+HTML
+
+<img src="atlandes.jpg" alt="Atlandes Logo">
+Note: If you placed atlandes.jpg in a subfolder (e.g., an images folder), your path would be src="images/atlandes.jpg".
+
+After saving the change to your cesium.html file, refresh the page in your browser, and the new logo should appear.
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+
+    <title>A63 Digital Twin - 3D Model</title>
+
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
+
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+
+
+    <style>
+
+        body {
+
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; overflow: hidden; background-color: #f0f0f0;
+
+        }
+
+        #cesiumContainer {
+
+            position: absolute; top: 0; left: 0; height: 100%; width: 100%; margin: 0; overflow: hidden; padding: 0; background: #000;
+
+        }
+
+        #loadingOverlay {
+
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(30, 30, 30, 0.97); display: flex;
+
+            flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: #ffffff; text-align: center;
+
+            transition: opacity 0.5s ease-out;
+
+        }
+
+        #loadingOverlay h1 { font-size: 1.6em; margin-top: 10px; font-weight: 300; max-width: 80%; }
+
+        #headerLogos {
+
+            position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between;
+
+            padding: 10px 20px; background-color: rgba(255, 255, 255, 0.92); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+
+            z-index: 1001; height: 70px; box-sizing: border-box;
+
+        }
+
+        #headerLogos nav { margin-left: auto; margin-right: auto; }
+
+        #headerLogos nav a { font-weight: 500; color: #2c3e50; text-decoration: none; padding: 5px 15px; border-radius: 5px; transition: background-color 0.3s; }
+
+        #headerLogos nav a:hover { background-color: #e0e0e0; }
+
+        #logoAtlandes, #logoEelisa { height: 50px; width: auto; }
+
+        .cesium-widget-credits { display: none !important; }
+
+        
+
+        #toolbar {
+
+            position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.85); padding: 8px;
+
+            border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 220px;
+
+        }
+
+        #toolbar button {
+
+            background-color: #444; border: 1px solid #666; color: #fff; padding: 8px 12px; margin: 4px 2px;
+
+            border-radius: 4px; cursor: pointer; display: block; width: calc(100% - 4px);
+
+            box-sizing: border-box; text-align: left; transition: background-color 0.2s;
+
+        }
+
+        #toolbar button:hover { background-color: #555; }
+
+        .toolbar-group-label {
+
+            font-weight: bold; font-size: 0.9em; color: #ddd; margin-top: 10px; margin-bottom: 3px;
+
+            padding-left: 2px; display: block;
+
+        }
+
+        .toolbar-group-label:first-child { margin-top: 0; }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+    <div id="cesiumContainer"></div>
+
+
+
+    <div id="loadingOverlay">
+
+        <h1>Loading Digital Twin Environment...</h1>
+
+    </div>
+
+
+
+    <div id="headerLogos">
+
+        <img src="https://upload.wikimedia.org/wikipedia/fr/a/a0/Logo_Atlandes.svg" alt="Atlandes Logo" id="logoAtlandes">
+
+        <nav>
+
+            <a href="index.html">Home</a>
+
+            <a href="cesium.html">3D Model</a>
+
+            <a href="dashboard.html">Dashboard</a>
+
+            <a href="map.html">ArcGIS Map</a>
+
+        </nav>
+
+        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Digital Twins Logo" id="logoEelisa">
+
+    </div>
+
+
+
+    <div id="toolbar">
+
+        <span class="toolbar-group-label">Clipping Tools</span>
+
+        <button id="enableClipBtn">Enable/Disable Clipping</button>
+
+        <button id="inverseClipBtn">Inverse Clipping</button>
+
+        <button id="removeClipBtn">Remove Last Polygon</button>
+
+    </div>
+
+
+
+    <script>
+
+        async function main() {
+
+            const loadingMessageElement = document.querySelector("#loadingOverlay h1");
+
+            const loadingOverlayElement = document.getElementById("loadingOverlay");
+
+
+
+            try {
+
+                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
+
+
+
+                const viewer = new Cesium.Viewer("cesiumContainer", {
+
+                    timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false,
+
+                    geocoder: true,
+
+                    creditContainer: document.createElement("div"),
+
+                    infoBox: false, selectionIndicator: false
+
+                });
+
+                window.cesiumViewer = viewer; // Global viewer
+
+                const scene = viewer.scene;
+
+
+
+                viewer.scene.globe.enableLighting = true;
+
+                viewer.scene.postProcessStages.fxaa.enabled = true;
+
+                viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+
+                scene.skyAtmosphere.show = true;
+
+
+
+                loadingMessageElement.textContent = "Loading Global Terrain...";
+
+                await Cesium.createWorldTerrainAsync().then(terrain => { scene.terrainProvider = terrain; });
+
+
+
+                loadingMessageElement.textContent = "Loading Project Model...";
+
+                const myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3385864);
+
+                viewer.scene.primitives.add(myTileset);
+
+
+
+                myTileset.style = new Cesium.Cesium3DTileStyle({
+
+                    color: {
+
+                        conditions: [
+
+                            ["${name_1} === 'BBSG 0/14'", "color('#A0522D')"], ["${name_1} === 'BBSG'", "color('#A52A2A')"],
+
+                            ["${name_1} === 'BBSG 0/10 R50'", "color('#CD853F')"], ["${name_1} === 'GNT'", "color('#D2B48C')"],
+
+                            ["${name_1} === 'GNT 0/31.5'", "color('#BC8F8F')"], ["${name_1} === 'GB'", "color('#C0A080')"],
+
+                            ["${name_1} === 'GB 0/14 R50'", "color('#D8BFD8')"], ["${name_1} === 'GB 014 OPTIBASE'", "color('#DEB887')"],
+
+                            ["${name_1} === 'SB'", "color('#B08060')"], ["${name_1} === 'GTLH'", "color('#BDB76B')"],
+
+                            ["${name_1} === 'geotextile classe 7'", "color('#8FBC8F')"], ["${name_1} === 'BBTM 0/10'", "color('#696969')"],
+
+                            ["${name_1} === 'BBTM 0/10 R20'", "color('#777777')"], ["${name_1} === 'EME2 0/14R30'", "color('#4F4F4F')"],
+
+                            ["${name_1} === 'BBME3 R30'", "color('#555555')"], ["${name_1} === 'BBDr 0/10'", "color('#333333')"],
+
+                            ["${name_1} === 'BB 0/6 acc'", "color('#666666')"], ["${name_1} === 'BB Accoustiq'", "color('#708090')"],
+
+                            ["${name_1} === 'BBME 0/10R15'", "color('#505050')"], ["${name_1} === 'BBME 0/10 R30'", "color('#585858')"],
+
+                            ["${name_1} === 'EME 0/14 R30'", "color('#454545')"], ["${name_1} === 'BBME'", "color('#606060')"],
+
+                            ["${name_1} === 'TAB BET'", "color('#C0C0C0')"], ["${name_1} === 'CBX C30/37'", "color('#A9A9A9')"],
+
+                            ["${name_1} === 'CBX C25/30'", "color('#B5B5B5')"], ["${name_1} === 'Etanch'", "color('#4682B4')"],
+
+                            ["${name_1} === 'Autres'", "color('#800080')"], [true, "color('white')"]
+
+                        ]
+
+                    }
+
+                });
+
+
+
+                loadingMessageElement.textContent = "Positioning Camera...";
+
+                await viewer.zoomTo(myTileset);
+
+
+
+                if (Cesium.defined(myTileset)) {
+
+                    myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
+
+                        edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
+
+                    });
+
+                }
+
+                
+
+                // Clipping Logic
+
+                const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+
+                let activeShapePoints = [];
+
+                let activeShape;
+
+                let floatingPoint;
+
+
+
+                handler.setInputAction(function (event) {
+
+                    const earthPosition = scene.pickPosition(event.position);
+
+                    if (Cesium.defined(earthPosition)) {
+
+                        if (activeShapePoints.length === 0) {
+
+                            floatingPoint = viewer.entities.add({
+
+                                position: earthPosition,
+
+                                point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
+
+                            });
+
+                            activeShapePoints.push(earthPosition);
+
+                            const dynamicPositions = new Cesium.CallbackProperty(function () {
+
+                                return new Cesium.PolygonHierarchy(activeShapePoints);
+
+                            }, false);
+
+                            activeShape = viewer.entities.add({
+
+                                polygon: {
+
+                                    hierarchy: dynamicPositions,
+
+                                    material: new Cesium.ColorMaterialProperty(Cesium.Color.ORANGERED.withAlpha(0.7)),
+
+                                },
+
+                            });
+
+                        }
+
+                        activeShapePoints.push(earthPosition);
+
+                    }
+
+                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+
+
+                handler.setInputAction(function (event) {
+
+                    if (Cesium.defined(floatingPoint)) {
+
+                        const newPosition = scene.pickPosition(event.endPosition);
+
+                        if (Cesium.defined(newPosition)) {
+
+                            floatingPoint.position.setValue(newPosition);
+
+                            activeShapePoints.pop();
+
+                            activeShapePoints.push(newPosition);
+
+                        }
+
+                    }
+
+                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+
+
+                handler.setInputAction(function () {
+
+                    if (activeShapePoints.length > 2) {
+
+                        const finalPoints = activeShapePoints.slice(0, -1);
+
+                        if (myTileset?.clippingPolygons) {
+
+                            const newClippingPolygon = new Cesium.ClippingPolygon({ positions: finalPoints });
+
+                            myTileset.clippingPolygons.add(newClippingPolygon);
+
+                        }
+
+                    }
+
+                    viewer.entities.remove(floatingPoint);
+
+                    viewer.entities.remove(activeShape);
+
+                    floatingPoint = undefined;
+
+                    activeShape = undefined;
+
+                    activeShapePoints = [];
+
+                }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+
+
+
+                loadingOverlayElement.style.opacity = "0";
+
+                setTimeout(() => { loadingOverlayElement.style.display = "none"; }, 500);
+
+
+
+            } catch (error) {
+
+                console.error("Critical error during Cesium setup:", error);
+
+                loadingMessageElement.textContent = `Application Error: ${error.message || 'An unknown error occurred.'}`;
+
+                loadingMessageElement.style.color = "#ffdddd";
+
+            }
+
+        }
+
+
+
+        function connectToolbarButtons() {
+
+            const viewer = window.cesiumViewer;
+
+            if (!viewer) {
+
+                console.error("Cesium Viewer not found.");
+
+                return;
+
+            }
+
+            const myTileset = viewer.scene.primitives.get(viewer.scene.primitives.length - 1);
+
+            if (!myTileset || !myTileset.clippingPolygons) {
+
+                console.error("Clipping-enabled tileset not found.");
+
+                return;
+
+            }
+
+
+
+            document.getElementById('enableClipBtn').addEventListener('click', () => {
+
+                myTileset.clippingPolygons.enabled = !myTileset.clippingPolygons.enabled;
+
+            });
+
+
+
+            document.getElementById('inverseClipBtn').addEventListener('click', () => {
+
+                myTileset.clippingPolygons.inverse = !myTileset.clippingPolygons.inverse;
+
+            });
+
+
+
+            document.getElementById('removeClipBtn').addEventListener('click', () => {
+
+                if (myTileset.clippingPolygons.length > 0) {
+
+                    myTileset.clippingPolygons.remove(myTileset.clippingPolygons.get(myTileset.clippingPolygons.length - 1));
+
+                }
+
+            });
+
+        }
+
+        
+
+        // Run
+
+        main();
+
+        connectToolbarButtons();
+
+    </script>
+
+</body>
+
+</html>
+
+
+
+Do the change
+
+
+
+
+
+Show thinking
+Of course. I've updated the HTML to use the local atlandes.jpg file for the logo.
+
+Here is the modified code. I've highlighted the line that was changed.
+
+HTML
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -58,8 +996,7 @@
     </div>
 
     <div id="headerLogos">
-        <img src="https://upload.wikimedia.org/wikipedia/fr/a/a0/Logo_Atlandes.svg" alt="Atlandes Logo" id="logoAtlandes">
-        <nav>
+        <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes"> <nav>
             <a href="index.html">Home</a>
             <a href="cesium.html">3D Model</a>
             <a href="dashboard.html">Dashboard</a>
@@ -216,7 +1153,7 @@
             });
 
             document.getElementById('inverseClipBtn').addEventListener('click', () => {
-                myTileset.clippingPolygons.inverse = !myTileset.clippingPolygons.inverse;
+                myTileset.clippingPolygons.inverse = !myTileset.clJust make sure the `atlandes.jpg` file is in the same folder as this HTML file.ogons.inverse;
             });
 
             document.getElementById('removeClipBtn').addEventListener('click', () => {
@@ -232,3 +1169,13 @@
     </script>
 </body>
 </html>
+Just make sure the atlandes.jpg file is in the same folder as this HTML file for the image to load correctly.
+
+
+
+
+
+
+
+Gemini can make mistakes, so double-check it
+
