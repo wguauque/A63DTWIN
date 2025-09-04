@@ -13,13 +13,19 @@
         #cesiumContainer { position: absolute; top: 0; left: 0; height: 100%; width: 100%; }
         #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30,30,30,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.5s ease; }
         #headerLogos { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: rgba(255, 255, 255, 0.95); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1001; height: 70px; box-sizing: border-box; }
+        #headerLogos nav { margin: auto; }
+        #headerLogos nav a { font-weight: 500; color: #2c3e50; text-decoration: none; padding: 5px 15px; border-radius: 5px; transition: background-color 0.3s; }
         #logoAtlandes, #logoEelisa { height: 50px; }
         .cesium-widget-credits { display: none !important; }
         
         #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(45,45,45,0.9); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 1000; max-width: 280px; color: white; }
         .toolbar-group-label { font-weight: bold; font-size: 0.95em; color: #00bcd4; margin-top: 12px; margin-bottom: 8px; padding-left: 2px; display: block; border-bottom: 1px solid #444; padding-bottom: 3px; }
+        .toolbar-group-label:first-child { margin-top: 0; }
         #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; box-sizing: border-box; }
         #toolbar button { background-color: #444; cursor: pointer; text-align: left; }
+        #toolbar button:hover { background-color: #5a5a5a; }
+        .filter-item { margin-bottom: 5px; }
+        .filter-item label { display: block; font-size: 0.85em; margin-bottom: 2px; color: #ccc; }
     </style>
 </head>
 <body>
@@ -29,23 +35,65 @@
 
     <div id="headerLogos">
         <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
+        <nav><a href="#">3D Model</a></nav>
         <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
     </div>
 
     <div id="toolbar">
-        <span class="toolbar-group-label">Filter & Search by Material</span>
-        <label for="material-filter" style="font-size:0.85em; margin-left: 2px;">Filter by Material (name_1)</label>
-        <select id="material-filter"></select>
+        <span class="toolbar-group-label">Search & View</span>
+        <input type="text" id="prSearchInput" placeholder="Search by PR (e.g., 45000)">
+        <button id="colorizeDateBtn">Toggle Date Colors</button>
+
+        <span class="toolbar-group-label">Property Filters</span>
+        <div id="filter-container"></div> <span class="toolbar-group-label">Material Filters</span>
+        <div class="filter-item">
+            <label for="material-filter">Filter by Material (name_1)</label>
+            <select id="material-filter"></select>
+        </div>
+        <div class="filter-item">
+            <label for="material-search">Search & Highlight (name_1)</label>
+            <input type="text" id="material-search" placeholder="e.g., BBSG">
+        </div>
         
-        <label for="material-search" style="font-size:0.85em; margin-left: 2px; margin-top: 10px; display: block;">Search & Highlight (name_1)</label>
-        <input type="text" id="material-search" placeholder="e.g., BBSG">
-        
-        <button id="reset-btn" style="margin-top: 10px;">Reset View</button>
+        <span class="toolbar-group-label">Actions</span>
+        <button id="reset-btn">Reset All Filters & View</button>
     </div>
 
     <script>
-        // --- This list contains all possible values for the 'name_1' property ---
-        // --- It is used to build the dropdown and the default colors ---
+        // ===================================================================================
+        // --- 1. CENTRAL CONFIGURATION & DATA ---
+        // ===================================================================================
+        const CONFIG = {
+            filterableProperties: [
+                {
+                    propertyName: 'excelLayerInfoENTREPRISE',
+                    displayName: 'Company',
+                    type: 'select',
+                    options: ['COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER']
+                },
+                {
+                    propertyName: 'excelLayerInfoTYPE_COUCH',
+                    displayName: 'Layer Type',
+                    type: 'select',
+                    options: ['Arase', 'Base', 'couche de forme', 'Fondations', 'Forme', 'Liaison', 'Roulement']
+                },
+                {
+                    propertyName: 'excelLayerInfoN°_ORDRE',
+                    displayName: 'Order Number',
+                    type: 'numeric'
+                }
+            ],
+            search: {
+                PR1: 'excelLayerInfoPR_1',
+                PR2: 'excelLayerInfoPR_2'
+            },
+            date: {
+                propertyName: 'excelLayerInfoDATE_MS',
+                min: -631152000000, // Jan 1, 1950
+                max: 1767225600000, // Jan 1, 2026
+            }
+        };
+
         const materialList = [
             'BBSG 0/14', 'BBSG', 'BBSG 0/10 R50', 'GNT', 'GNT 0/31.5', 'GB', 
             'GB 0/14 R50', 'GB 014 OPTIBASE', 'SB', 'GTLH', 'geotextile classe 7',
@@ -54,42 +102,218 @@
             'TAB BET', 'CBX C30/37', 'CBX C25/30', 'Etanch', 'Autres'
         ];
 
+        // --- Global variables for application state
         let myTileset;
-        let defaultStyle;
+        const appState = { 
+            filters: {},         // For dynamic property filters
+            searchQuery: '',     // For PR search
+            colorizeByDate: false,
+            materialFilter: '',  // For material dropdown filter
+            materialSearch: ''   // For material text search/highlight
+        };
 
         // ===================================================================================
-        // --- MAIN APPLICATION SETUP ---
+        // --- 2. CORE LOGIC: Dynamically builds styles based on the CONFIG and appState ---
+        // ===================================================================================
+        function updateTilesetStyle() {
+            if (!myTileset) return;
+
+            // PART A: Build the visibility expression ('show') from all filters
+            let showConditions = [];
+            
+            // Handle dynamic property filters
+            for (const key in appState.filters) {
+                const value = appState.filters[key];
+                if (!value) continue;
+                const propConfig = CONFIG.filterableProperties.find(p => p.propertyName === key);
+                if (!propConfig) continue;
+                const propExpr = /^[a-zA-Z0-9_]+$/.test(propConfig.propertyName) ? `\${${propConfig.propertyName}}` : `getProperty('${propConfig.propertyName}')`;
+                if (propConfig.type === 'numeric') {
+                    showConditions.push(`${propExpr} === ${Number(value)}`);
+                } else {
+                    showConditions.push(`${propExpr} === '${value}'`);
+                }
+            }
+            
+            // Handle material dropdown filter
+            if (appState.materialFilter) {
+                 // The property name is 'name_1' as specified in the UI label.
+                 // Using getProperty() is safer than the ${} syntax.
+                showConditions.push(`getProperty('name_1') === '${appState.materialFilter}'`);
+            }
+
+            const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
+
+            // PART B: Build the color expression
+            const dateRange = CONFIG.date.max - CONFIG.date.min;
+            const dateColorExpr = `color('red').lerp(color('lime'), (Number(\${${CONFIG.date.propertyName}}) - ${CONFIG.date.min}) / ${dateRange})`;
+            
+            let colorExpression = appState.colorizeByDate ? dateColorExpr : "color('white')";
+
+            // PR search (yellow) takes precedence
+            if (appState.searchQuery) {
+                const searchCond = `(\${${CONFIG.search.PR1}} === '${appState.searchQuery}') || (\${${CONFIG.search.PR2}} === '${appState.searchQuery}')`;
+                colorExpression = `Boolean(${searchCond}) ? color('yellow') : ${colorExpression}`;
+            }
+            
+            // Material search (magenta) is applied next
+            if (appState.materialSearch) {
+                const searchCond = `getProperty('name_1') === '${appState.materialSearch}'`;
+                colorExpression = `Boolean(${searchCond}) ? color('magenta') : ${colorExpression}`;
+            }
+
+            // PART C: Apply the final combined style
+            myTileset.style = new Cesium.Cesium3DTileStyle({
+                show: showExpression,
+                color: colorExpression
+            });
+        }
+
+        // ===================================================================================
+        // --- 3. UI GENERATION & SETUP ---
+        // ===================================================================================
+        function buildFilterUI() {
+            const container = document.getElementById('filter-container');
+            container.innerHTML = '';
+            CONFIG.filterableProperties.forEach(prop => {
+                const item = document.createElement('div');
+                item.className = 'filter-item';
+                const label = document.createElement('label');
+                label.htmlFor = `filter-${prop.propertyName}`;
+                label.textContent = prop.displayName;
+                item.appendChild(label);
+
+                let control;
+                if (prop.type === 'select') {
+                    control = document.createElement('select');
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = `All ${prop.displayName}s`;
+                    control.appendChild(defaultOption);
+                    prop.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.textContent = opt;
+                        control.appendChild(option);
+                    });
+                } else {
+                    control = document.createElement('input');
+                    control.type = 'text';
+                    control.placeholder = `Enter ${prop.displayName}`;
+                }
+                control.id = `filter-${prop.propertyName}`;
+                control.addEventListener('change', () => {
+                    appState.filters[prop.propertyName] = control.value;
+                    updateTilesetStyle();
+                });
+                item.appendChild(control);
+                container.appendChild(item);
+            });
+        }
+        
+        function populateMaterialFilter() {
+            const select = document.getElementById('material-filter');
+            select.innerHTML = ''; // Clear existing
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'All Materials';
+            select.appendChild(defaultOption);
+
+            materialList.forEach(material => {
+                const option = document.createElement('option');
+                option.value = material;
+                option.textContent = material;
+                select.appendChild(option);
+            });
+        }
+
+        function setupEventListeners() {
+            // PR search
+            document.getElementById('prSearchInput').addEventListener('input', (event) => {
+                appState.searchQuery = event.target.value.trim();
+                updateTilesetStyle();
+            });
+
+            // Date color toggle
+            document.getElementById('colorizeDateBtn').addEventListener('click', () => {
+                appState.colorizeByDate = !appState.colorizeByDate;
+                updateTilesetStyle();
+            });
+
+            // Material filter dropdown
+            document.getElementById('material-filter').addEventListener('change', (event) => {
+                appState.materialFilter = event.target.value;
+                updateTilesetStyle();
+            });
+            
+            // Material search input
+            document.getElementById('material-search').addEventListener('input', (event) => {
+                appState.materialSearch = event.target.value.trim();
+                updateTilesetStyle();
+            });
+
+            // Central reset button
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                // Reset state
+                appState.filters = {};
+                appState.searchQuery = '';
+                appState.colorizeByDate = false;
+                appState.materialFilter = '';
+                appState.materialSearch = '';
+                
+                // Reset UI controls
+                document.getElementById('prSearchInput').value = '';
+                document.getElementById('material-search').value = '';
+                document.getElementById('material-filter').value = '';
+                document.querySelectorAll('#filter-container select, #filter-container input').forEach(el => el.value = '');
+                
+                updateTilesetStyle();
+            });
+        }
+        
+        // ===================================================================================
+        // --- 4. MAIN APPLICATION SETUP ---
         // ===================================================================================
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
 
-                const viewer = new Cesium.Viewer("cesiumContainer", {
-                    timeline: false, animation: false, sceneModePicker: false, 
-                    baseLayerPicker: false, geocoder: true, 
-                    creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false 
-                });
+                const viewer = new Cesium.Viewer("cesiumContainer", { timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false, geocoder: true, creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false });
                 
+                // --- DEBUGGING SNIPPET: Click to see feature properties ---
+                const clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+                clickHandler.setInputAction(function (click) {
+                    const pickedFeature = viewer.scene.pick(click.position);
+                    if (pickedFeature) {
+                        console.log("INSPECTED FEATURE PROPERTIES:");
+                        const propertyIds = pickedFeature.getPropertyIds();
+                        const properties = {};
+                        for (let i = 0; i < propertyIds.length; i++) {
+                            const propertyId = propertyIds[i];
+                            properties[propertyId] = pickedFeature.getProperty(propertyId);
+                        }
+                        console.table(properties);
+                    } else {
+                        console.log("No feature picked.");
+                    }
+                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+                // --- END DEBUGGING SNIPPET ---
+
                 viewer.scene.globe.enableLighting = true;
+
+                loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
+                await Cesium.createWorldTerrainAsync().then(tp => { viewer.scene.terrainProvider = tp; });
 
                 loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
                 viewer.scene.primitives.add(myTileset);
                 
-                // --- Build a default style with unique colors for each material ---
-                const colorConditions = materialList.map((material, index) => {
-                    const color = Cesium.Color.fromRandom({ alpha: 1.0 });
-                    return [`\${name_1} === '${material}'`, `color('${color.toCssColorString()}')`];
-                });
-                colorConditions.push([true, "color('white')"]); // Default for any unlisted material
-                
-                defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
-                myTileset.style = defaultStyle;
-
-                // --- Setup UI ---
                 buildFilterUI();
+                populateMaterialFilter(); // Populate the new material dropdown
                 setupEventListeners();
+                updateTilesetStyle(); // Apply initial style
 
                 loadingOverlay.querySelector('h1').textContent = "Positioning Camera...";
                 await viewer.zoomTo(myTileset);
@@ -102,61 +326,7 @@
             }
         }
 
-        function buildFilterUI() {
-            const select = document.getElementById('material-filter');
-            select.innerHTML = ''; // Clear previous options
-            
-            const allOption = document.createElement('option');
-            allOption.value = 'all';
-            allOption.textContent = 'Show All Materials';
-            select.appendChild(allOption);
-
-            materialList.forEach(material => {
-                const option = document.createElement('option');
-                option.value = material;
-                option.textContent = material;
-                select.appendChild(option);
-            });
-        }
-
-        function setupEventListeners() {
-            // Dropdown Filter
-            document.getElementById('material-filter').addEventListener('change', (event) => {
-                const selectedMaterial = event.target.value;
-                document.getElementById('material-search').value = ''; // Clear search box
-                
-                if (selectedMaterial === 'all') {
-                    myTileset.style = defaultStyle;
-                } else {
-                    myTileset.style = new Cesium.Cesium3DTileStyle({
-                        show: `\${name_1} === '${selectedMaterial}'`
-                    });
-                }
-            });
-
-            // Search Box
-            document.getElementById('material-search').addEventListener('input', (event) => {
-                const searchValue = event.target.value;
-                document.getElementById('material-filter').value = 'all'; // Reset dropdown
-                
-                if (!searchValue) {
-                    myTileset.style = defaultStyle;
-                    return;
-                }
-
-                myTileset.style = new Cesium.Cesium3DTileStyle({
-                    color: `regExp('${searchValue}', 'i').test(\${name_1}) ? color('yellow') : color('gray', 0.2)`
-                });
-            });
-            
-            // Reset Button
-            document.getElementById('reset-btn').addEventListener('click', () => {
-                document.getElementById('material-filter').value = 'all';
-                document.getElementById('material-search').value = '';
-                myTileset.style = defaultStyle;
-            });
-        }
-        
+        // --- Run the application ---
         main();
 
     </script>
