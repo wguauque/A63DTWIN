@@ -33,22 +33,18 @@
         .cesium-widget-credits { display: none !important; }
         
         #toolbar {
-            position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.9); padding: 10px;
-            border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 250px;
+            position: absolute; top: 100px; left: 15px; background: rgba(45, 45, 45, 0.85); padding: 8px;
+            border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000; max-width: 220px;
         }
         #toolbar button {
             background-color: #444; border: 1px solid #666; color: #fff; padding: 8px 12px; margin: 4px 2px;
             border-radius: 4px; cursor: pointer; display: block; width: calc(100% - 4px);
             box-sizing: border-box; text-align: left; transition: background-color 0.2s;
         }
-        #toolbar button:hover { background-color: #5a5a5a; }
-        #toolbar input[type="text"] {
-            width: calc(100% - 6px); padding: 7px; margin: 4px 2px; border-radius: 4px;
-            border: 1px solid #666; background-color: #222; color: #fff; box-sizing: border-box;
-        }
+        #toolbar button:hover { background-color: #555; }
         .toolbar-group-label {
-            font-weight: bold; font-size: 0.95em; color: #00bcd4; margin-top: 12px; margin-bottom: 5px;
-            padding-left: 2px; display: block; border-bottom: 1px solid #444; padding-bottom: 3px;
+            font-weight: bold; font-size: 0.9em; color: #ddd; margin-top: 10px; margin-bottom: 3px;
+            padding-left: 2px; display: block;
         }
         .toolbar-group-label:first-child { margin-top: 0; }
     </style>
@@ -56,10 +52,13 @@
 <body>
 
     <div id="cesiumContainer"></div>
-    <div id="loadingOverlay"><h1>Loading Digital Twin Environment...</h1></div>
+
+    <div id="loadingOverlay">
+        <h1>Loading Digital Twin Environment...</h1>
+    </div>
 
     <div id="headerLogos">
-        <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
+        <img src="https://upload.wikimedia.org/wikipedia/fr/a/a0/Logo_Atlandes.svg" alt="Atlandes Logo" id="logoAtlandes">
         <nav>
             <a href="index.html">Home</a>
             <a href="cesium.html">3D Model</a>
@@ -70,17 +69,6 @@
     </div>
 
     <div id="toolbar">
-        <span class="toolbar-group-label">Search & Visualization</span>
-        <input type="text" id="prSearchInput" placeholder="Search by PR_1 or PR_2">
-        <button id="colorizeDateBtn">Toggle Date Colors</button>
-        <button id="resetViewBtn">Reset View Style</button>
-
-        <span class="toolbar-group-label">Filter by Attributes</span>
-        <input type="text" id="chantierFilter" placeholder="CHANTIER">
-        <input type="text" id="entrepriseFilter" placeholder="ENTREPRISE">
-        <input type="text" id="typeCoucheFilter" placeholder="TYPE_COUCH">
-        <button id="applyFiltersBtn">Apply Filters</button>
-
         <span class="toolbar-group-label">Clipping Tools</span>
         <button id="enableClipBtn">Enable/Disable Clipping</button>
         <button id="inverseClipBtn">Inverse Clipping</button>
@@ -88,80 +76,6 @@
     </div>
 
     <script>
-        // --- 1. CENTRAL CONFIGURATION ---
-        // All property names from your model are defined here.
-        // If your model properties change, you only need to update this section.
-        const CONFIG = {
-            properties: {
-                PR1: 'PR_1',
-                PR2: 'PR_2',
-                DATE: 'DATE_MS',
-                CHANTIER: 'CHANTIER',
-                ENTREPRISE: 'ENTREPRISE',
-                TYPE_COUCH: 'TYPE_COUCH'
-            },
-            // Approximate date range for color gradient (in milliseconds).
-            // You can adjust these if your project dates are different.
-            minDate: 1640995200000, // Jan 1, 2022
-            maxDate: 1767225600000, // Jan 1, 2026
-        };
-
-        // --- 2. APPLICATION STATE ---
-        // This object holds the current state of all filters and styles.
-        // The UI buttons will modify this state.
-        let styleState = {
-            filters: {},
-            searchQuery: '',
-            colorizeByDate: false,
-        };
-
-        let myTileset; // Global reference to the loaded tileset
-
-        // --- 3. CORE LOGIC ---
-
-        /**
-         * Reads the styleState and generates a new Cesium3DTileStyle.
-         * This single function combines all filters, search, and color effects.
-         */
-        function updateTilesetStyle() {
-            if (!myTileset) return;
-
-            const { filters, searchQuery, colorizeByDate } = styleState;
-            
-            // Part A: Build the 'show' condition from active filters
-            let showConditions = [];
-            for (const key in filters) {
-                if (filters[key]) {
-                    const propName = CONFIG.properties[key];
-                    // Handle special characters in property names safely
-                    const propExpression = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(propName) ? `\${${propName}}` : `getProperty('${propName}')`;
-                    showConditions.push(`${propExpression} === '${filters[key]}'`);
-                }
-            }
-            const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
-
-            // Part B: Build the 'color' condition
-            const dateRange = CONFIG.maxDate - CONFIG.minDate;
-            const dateColorExpression = `color('red').lerp(color('lime'), (Number(\${${CONFIG.properties.DATE}}) - ${CONFIG.minDate}) / ${dateRange})`;
-            
-            let colorExpression = "color('white')"; // Default color
-            if (colorizeByDate) {
-                colorExpression = dateColorExpression;
-            }
-
-            // Search highlighting overrides other colors
-            if (searchQuery) {
-                const searchCondition = `(\${${CONFIG.properties.PR1}} === '${searchQuery}') || (\${${CONFIG.properties.PR2}} === '${searchQuery}')`;
-                colorExpression = `Boolean(${searchCondition}) ? color('yellow') : ${colorExpression}`;
-            }
-
-            // Apply the new combined style
-            myTileset.style = new Cesium.Cesium3DTileStyle({
-                show: showExpression,
-                color: colorExpression,
-            });
-        }
-
         async function main() {
             const loadingMessageElement = document.querySelector("#loadingOverlay h1");
             const loadingOverlayElement = document.getElementById("loadingOverlay");
@@ -171,28 +85,109 @@
 
                 const viewer = new Cesium.Viewer("cesiumContainer", {
                     timeline: false, animation: false, sceneModePicker: false, baseLayerPicker: false,
-                    geocoder: true, creditContainer: document.createElement("div"),
+                    geocoder: true,
+                    creditContainer: document.createElement("div"),
                     infoBox: false, selectionIndicator: false
                 });
+                window.cesiumViewer = viewer; // Global viewer
                 const scene = viewer.scene;
 
-                scene.globe.enableLighting = true;
-                scene.postProcessStages.fxaa.enabled = true;
+                viewer.scene.globe.enableLighting = true;
+                viewer.scene.postProcessStages.fxaa.enabled = true;
+                viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
                 scene.skyAtmosphere.show = true;
 
                 loadingMessageElement.textContent = "Loading Global Terrain...";
-                await Cesium.createWorldTerrainAsync({ requestVertexNormals: true }).then(tp => { scene.terrainProvider = tp; });
+                await Cesium.createWorldTerrainAsync().then(terrain => { scene.terrainProvider = terrain; });
 
                 loadingMessageElement.textContent = "Loading Project Model...";
-                myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
-                scene.primitives.add(myTileset);
-                updateTilesetStyle(); // Apply initial default style
+                const myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3385864);
+                viewer.scene.primitives.add(myTileset);
+
+                myTileset.style = new Cesium.Cesium3DTileStyle({
+                    color: {
+                        conditions: [
+                            ["${name_1} === 'BBSG 0/14'", "color('#A0522D')"], ["${name_1} === 'BBSG'", "color('#A52A2A')"],
+                            ["${name_1} === 'BBSG 0/10 R50'", "color('#CD853F')"], ["${name_1} === 'GNT'", "color('#D2B48C')"],
+                            ["${name_1} === 'GNT 0/31.5'", "color('#BC8F8F')"], ["${name_1} === 'GB'", "color('#C0A080')"],
+                            ["${name_1} === 'GB 0/14 R50'", "color('#D8BFD8')"], ["${name_1} === 'GB 014 OPTIBASE'", "color('#DEB887')"],
+                            ["${name_1} === 'SB'", "color('#B08060')"], ["${name_1} === 'GTLH'", "color('#BDB76B')"],
+                            ["${name_1} === 'geotextile classe 7'", "color('#8FBC8F')"], ["${name_1} === 'BBTM 0/10'", "color('#696969')"],
+                            ["${name_1} === 'BBTM 0/10 R20'", "color('#777777')"], ["${name_1} === 'EME2 0/14R30'", "color('#4F4F4F')"],
+                            ["${name_1} === 'BBME3 R30'", "color('#555555')"], ["${name_1} === 'BBDr 0/10'", "color('#333333')"],
+                            ["${name_1} === 'BB 0/6 acc'", "color('#666666')"], ["${name_1} === 'BB Accoustiq'", "color('#708090')"],
+                            ["${name_1} === 'BBME 0/10R15'", "color('#505050')"], ["${name_1} === 'BBME 0/10 R30'", "color('#585858')"],
+                            ["${name_1} === 'EME 0/14 R30'", "color('#454545')"], ["${name_1} === 'BBME'", "color('#606060')"],
+                            ["${name_1} === 'TAB BET'", "color('#C0C0C0')"], ["${name_1} === 'CBX C30/37'", "color('#A9A9A9')"],
+                            ["${name_1} === 'CBX C25/30'", "color('#B5B5B5')"], ["${name_1} === 'Etanch'", "color('#4682B4')"],
+                            ["${name_1} === 'Autres'", "color('#800080')"], [true, "color('white')"]
+                        ]
+                    }
+                });
 
                 loadingMessageElement.textContent = "Positioning Camera...";
                 await viewer.zoomTo(myTileset);
 
-                setupUIEventListeners();
-                setupClipping(viewer, myTileset);
+                if (Cesium.defined(myTileset)) {
+                    myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
+                        edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
+                    });
+                }
+                
+                // Clipping Logic
+                const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+                let activeShapePoints = [];
+                let activeShape;
+                let floatingPoint;
+
+                handler.setInputAction(function (event) {
+                    const earthPosition = scene.pickPosition(event.position);
+                    if (Cesium.defined(earthPosition)) {
+                        if (activeShapePoints.length === 0) {
+                            floatingPoint = viewer.entities.add({
+                                position: earthPosition,
+                                point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
+                            });
+                            activeShapePoints.push(earthPosition);
+                            const dynamicPositions = new Cesium.CallbackProperty(function () {
+                                return new Cesium.PolygonHierarchy(activeShapePoints);
+                            }, false);
+                            activeShape = viewer.entities.add({
+                                polygon: {
+                                    hierarchy: dynamicPositions,
+                                    material: new Cesium.ColorMaterialProperty(Cesium.Color.ORANGERED.withAlpha(0.7)),
+                                },
+                            });
+                        }
+                        activeShapePoints.push(earthPosition);
+                    }
+                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+                handler.setInputAction(function (event) {
+                    if (Cesium.defined(floatingPoint)) {
+                        const newPosition = scene.pickPosition(event.endPosition);
+                        if (Cesium.defined(newPosition)) {
+                            floatingPoint.position.setValue(newPosition);
+                            activeShapePoints.pop();
+                            activeShapePoints.push(newPosition);
+                        }
+                    }
+                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+                handler.setInputAction(function () {
+                    if (activeShapePoints.length > 2) {
+                        const finalPoints = activeShapePoints.slice(0, -1);
+                        if (myTileset?.clippingPolygons) {
+                            const newClippingPolygon = new Cesium.ClippingPolygon({ positions: finalPoints });
+                            myTileset.clippingPolygons.add(newClippingPolygon);
+                        }
+                    }
+                    viewer.entities.remove(floatingPoint);
+                    viewer.entities.remove(activeShape);
+                    floatingPoint = undefined;
+                    activeShape = undefined;
+                    activeShapePoints = [];
+                }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
                 loadingOverlayElement.style.opacity = "0";
                 setTimeout(() => { loadingOverlayElement.style.display = "none"; }, 500);
@@ -204,104 +199,36 @@
             }
         }
 
-        function setupUIEventListeners() {
-            // Search Input: Updates on every key press
-            document.getElementById('prSearchInput').addEventListener('input', (event) => {
-                styleState.searchQuery = event.target.value;
-                updateTilesetStyle();
+        function connectToolbarButtons() {
+            const viewer = window.cesiumViewer;
+            if (!viewer) {
+                console.error("Cesium Viewer not found.");
+                return;
+            }
+            const myTileset = viewer.scene.primitives.get(viewer.scene.primitives.length - 1);
+            if (!myTileset || !myTileset.clippingPolygons) {
+                console.error("Clipping-enabled tileset not found.");
+                return;
+            }
+
+            document.getElementById('enableClipBtn').addEventListener('click', () => {
+                myTileset.clippingPolygons.enabled = !myTileset.clippingPolygons.enabled;
             });
 
-            // Toggle Date Colors Button
-            document.getElementById('colorizeDateBtn').addEventListener('click', () => {
-                styleState.colorizeByDate = !styleState.colorizeByDate;
-                updateTilesetStyle();
+            document.getElementById('inverseClipBtn').addEventListener('click', () => {
+                myTileset.clippingPolygons.inverse = !myTileset.clippingPolygons.inverse;
             });
 
-            // Apply Filters Button
-            document.getElementById('applyFiltersBtn').addEventListener('click', () => {
-                styleState.filters.CHANTIER = document.getElementById('chantierFilter').value;
-                styleState.filters.ENTREPRISE = document.getElementById('entrepriseFilter').value;
-                styleState.filters.TYPE_COUCH = document.getElementById('typeCoucheFilter').value;
-                updateTilesetStyle();
-            });
-
-            // Reset View Button
-            document.getElementById('resetViewBtn').addEventListener('click', () => {
-                // Reset state object
-                styleState.filters = {};
-                styleState.searchQuery = '';
-                styleState.colorizeByDate = false;
-                
-                // Reset UI elements
-                document.getElementById('prSearchInput').value = '';
-                document.getElementById('chantierFilter').value = '';
-                document.getElementById('entrepriseFilter').value = '';
-                document.getElementById('typeCoucheFilter').value = '';
-
-                updateTilesetStyle();
+            document.getElementById('removeClipBtn').addEventListener('click', () => {
+                if (myTileset.clippingPolygons.length > 0) {
+                    myTileset.clippingPolygons.remove(myTileset.clippingPolygons.get(myTileset.clippingPolygons.length - 1));
+                }
             });
         }
         
-        function setupClipping(viewer, tileset) {
-            if (!Cesium.defined(tileset)) return;
-            tileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
-                edgeColor: Cesium.Color.WHITE, edgeWidth: 1.0, enabled: true
-            });
-
-            const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
-            let activeShapePoints = [];
-            let activeShape, floatingPoint;
-
-            handler.setInputAction(function (event) {
-                const earthPosition = viewer.scene.pickPosition(event.position);
-                if (Cesium.defined(earthPosition)) {
-                    if (activeShapePoints.length === 0) {
-                        floatingPoint = viewer.entities.add({
-                            position: earthPosition,
-                            point: { color: Cesium.Color.ORANGERED, pixelSize: 8, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
-                        });
-                        activeShapePoints.push(earthPosition.clone());
-                        const dynamicPositions = new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(activeShapePoints), false);
-                        activeShape = viewer.entities.add({
-                            polygon: { hierarchy: dynamicPositions, material: Cesium.Color.ORANGERED.withAlpha(0.7) },
-                        });
-                    }
-                    activeShapePoints.push(earthPosition.clone());
-                }
-            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-            handler.setInputAction(function (event) {
-                if (Cesium.defined(floatingPoint)) {
-                    const newPosition = viewer.scene.pickPosition(event.endPosition);
-                    if (Cesium.defined(newPosition)) {
-                        floatingPoint.position.setValue(newPosition);
-                        activeShapePoints.pop();
-                        activeShapePoints.push(newPosition);
-                    }
-                }
-            }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
-
-            handler.setInputAction(function () {
-                if (activeShapePoints.length > 2) {
-                    tileset.clippingPolygons.add(new Cesium.ClippingPolygon({ positions: activeShapePoints.slice(0, -1) }));
-                }
-                viewer.entities.remove(floatingPoint);
-                viewer.entities.remove(activeShape);
-                floatingPoint = activeShape = undefined;
-                activeShapePoints = [];
-            }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
-
-            document.getElementById('enableClipBtn').addEventListener('click', () => { tileset.clippingPolygons.enabled = !tileset.clippingPolygons.enabled; });
-            document.getElementById('inverseClipBtn').addEventListener('click', () => { tileset.clippingPolygons.inverse = !tileset.clippingPolygons.inverse; });
-            document.getElementById('removeClipBtn').addEventListener('click', () => {
-                if (tileset.clippingPolygons.length > 0) {
-                    tileset.clippingPolygons.remove(tileset.clippingPolygons.get(tileset.clippingPolygons.length - 1));
-                }
-            });
-        }
-
-        // Run the application
+        // Run
         main();
+        connectToolbarButtons();
     </script>
 </body>
 </html>
