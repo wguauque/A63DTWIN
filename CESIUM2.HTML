@@ -86,7 +86,6 @@
             'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER'
         ];
 
-        // --- Updated PR list for simplified values ---
         const prList = [];
         for (let i = 34; i <= 140; i++) {
             prList.push(i.toString());
@@ -125,7 +124,6 @@
             const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
             let colorExpression;
             if (appState.prSearch) {
-                // --- Updated PR matching logic ---
                 colorExpression = `round(Number(\${excelLayerInfoPR1}) / 1000) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`; 
             } else if (appState.materialSearch) { 
                 colorExpression = `regExp('${appState.materialSearch}', 'i').test(\${name_1}) ? color('yellow') : defaultStyle.color.expression`; 
@@ -135,26 +133,34 @@
             myTileset.style = new Cesium.Cesium3DTileStyle({ show: showExpression, color: colorExpression });
         }
 
+        // --- REBUILT ZOOM FUNCTION ---
         function zoomToFeature(prValue) {
             if (!myTileset || !viewer || !prValue) return;
             const prNumber = Number(prValue);
             if (isNaN(prNumber)) return;
-            
-            // --- Updated zoom logic to isolate the exact simplified PR ---
+
+            // Temporarily apply a style that makes ONLY the target features visible.
             const zoomStyle = new Cesium.Cesium3DTileStyle({
                 show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}`
             });
             myTileset.style = zoomStyle;
 
+            // Use a timeout to ensure the style has been applied before zooming
             setTimeout(async () => {
                 try {
-                    await viewer.flyTo(myTileset, { 
-                        duration: 1.5,
-                        offset: new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-90), 2500) 
-                    });
-                } catch (error) { console.error("Error during flyTo operation:", error); } 
-                finally { updateTilesetStyle(); }
-            }, 250); 
+                    // Use zoomTo, which is more reliable for dynamic content.
+                    // The offset provides a nice angled "birds-eye" view.
+                    await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500));
+                } catch (error) {
+                    console.error("Error during zoomTo operation:", error);
+                    // Alert the user if zoom fails (e.g., no tiles were visible for that PR)
+                    alert("Could not zoom to the selected PR. The data may not exist or is not currently loaded.");
+                } finally {
+                    // After the flight (or failure), restore the main style.
+                    // This function will re-apply filters AND the magenta highlight.
+                    updateTilesetStyle();
+                }
+            }, 250);
         }
 
         async function main() {
