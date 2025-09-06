@@ -133,31 +133,23 @@
             myTileset.style = new Cesium.Cesium3DTileStyle({ show: showExpression, color: colorExpression });
         }
 
-        // --- REBUILT ZOOM FUNCTION ---
         function zoomToFeature(prValue) {
             if (!myTileset || !viewer || !prValue) return;
             const prNumber = Number(prValue);
             if (isNaN(prNumber)) return;
 
-            // Temporarily apply a style that makes ONLY the target features visible.
             const zoomStyle = new Cesium.Cesium3DTileStyle({
                 show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}`
             });
             myTileset.style = zoomStyle;
 
-            // Use a timeout to ensure the style has been applied before zooming
             setTimeout(async () => {
                 try {
-                    // Use zoomTo, which is more reliable for dynamic content.
-                    // The offset provides a nice angled "birds-eye" view.
                     await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500));
                 } catch (error) {
                     console.error("Error during zoomTo operation:", error);
-                    // Alert the user if zoom fails (e.g., no tiles were visible for that PR)
                     alert("Could not zoom to the selected PR. The data may not exist or is not currently loaded.");
                 } finally {
-                    // After the flight (or failure), restore the main style.
-                    // This function will re-apply filters AND the magenta highlight.
                     updateTilesetStyle();
                 }
             }, 250);
@@ -198,7 +190,8 @@
                 }
 
                 loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
-                viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
+                // --- CUSTOM TERRAIN IMPLEMENTED HERE ---
+                viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(3693677);
 
                 loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3672505);
