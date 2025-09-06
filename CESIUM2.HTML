@@ -57,6 +57,12 @@
     </div>
 
     <div id="toolbar">
+        <span class="toolbar-group-label">Basemap</span>
+        <select id="basemap-picker">
+            <option value="imagery" selected>Satellite Imagery</option>
+            <option value="photorealistic">3D Photorealistic</option>
+        </select>
+        
         <span class="toolbar-group-label">Search by PR</span>
         <div class="pr-search-container">
             <input type="text" id="pr-search" placeholder="Enter PR (e.g., 98000)">
@@ -86,7 +92,7 @@
         ];
         
         const companyList = [
-            'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER'
+            'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER'
         ];
 
         const prList = [];
@@ -97,6 +103,9 @@
         let myTileset;
         let defaultStyle;
         let viewer; 
+        // Variables for new basemaps
+        let photorealisticTileset;
+        let defaultImageryLayer;
         
         const appState = {
             materialFilter: '',
@@ -198,11 +207,28 @@
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
                 viewer = new Cesium.Viewer("cesiumContainer", {
                     timeline: false, animation: false, sceneModePicker: false, 
-                    baseLayerPicker: false, geocoder: true, 
+                    baseLayer: false, // Changed: Manual control over base layer
+                    geocoder: true, 
                     creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false 
                 });
                 viewer.scene.globe.enableLighting = true;
                 
+                // --- New Basemap Logic ---
+                defaultImageryLayer = viewer.scene.imageryLayers.addImageryProvider(
+                    await Cesium.createWorldImageryAsync()
+                );
+                
+                loadingOverlay.querySelector('h1').textContent = "Loading Basemap...";
+                try {
+                    photorealisticTileset = await Cesium.Cesium3DTileset.fromIonAssetId(2275703);
+                    viewer.scene.primitives.add(photorealisticTileset);
+                    photorealisticTileset.show = false; // Initially hidden
+                } catch (error) {
+                    console.error("Could not load Photorealistic 3D Tiles:", error);
+                    document.getElementById('basemap-picker').disabled = true;
+                }
+                // --- End New Basemap Logic ---
+
                 loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
                 viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
 
@@ -279,6 +305,21 @@
             const materialFilter = document.getElementById('material-filter');
             const entrepriseFilter = document.getElementById('entreprise-filter');
             const materialSearch = document.getElementById('material-search');
+            const basemapPicker = document.getElementById('basemap-picker'); // New picker element
+
+            // --- New Event Listener for Basemap ---
+            basemapPicker.addEventListener('change', (event) => {
+                const selectedBasemap = event.target.value;
+                if (selectedBasemap === 'photorealistic') {
+                    if(photorealisticTileset) photorealisticTileset.show = true;
+                    defaultImageryLayer.show = false;
+                    viewer.scene.globe.baseColor = Cesium.Color.BLACK;
+                } else { // 'imagery'
+                    if(photorealisticTileset) photorealisticTileset.show = false;
+                    defaultImageryLayer.show = true;
+                    viewer.scene.globe.baseColor = Cesium.Color.TRANSPARENT;
+                }
+            });
 
             prSearchInput.addEventListener('input', () => {
                 const value = prSearchInput.value.toLowerCase();
@@ -318,8 +359,6 @@
                 updateTilesetStyle();
             });
 
-
-
             materialSearch.addEventListener('input', () => {
                 prSearchInput.value = '';
                 autocompleteResults.innerHTML = '';
@@ -349,4 +388,3 @@
     </script>
 </body>
 </html>
-
