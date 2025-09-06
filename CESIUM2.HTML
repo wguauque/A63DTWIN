@@ -102,13 +102,15 @@
         const companyList = [ 'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER' ];
         const prList = [];
         for (let i = 34; i <= 140; i++) { prList.push(i.toString()); }
+        
+        // --- List of properties to display in the infobox ---
+        const allowedProperties = ['TYPECOUCH', 'SURFACE', 'ENTREPRISE', 'PR1', 'NORDRE', 'CHANTIER', 'FOND', 'PR2', 'DATEMS'];
 
         let myTileset, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
         let selectedFeature = undefined;
         let originalColor = new Cesium.Color();
         const highlightColor = Cesium.Color.AQUA;
         
-        // --- New variables for measurement tool ---
         let isMeasuring = false;
         let measurementDataSource;
         let measurementHandler;
@@ -197,7 +199,6 @@
                 defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
                 myTileset.style = defaultStyle;
 
-                // Initialize measurement data source
                 measurementDataSource = new Cesium.CustomDataSource('measurementDataSource');
                 viewer.dataSources.add(measurementDataSource);
 
@@ -212,14 +213,33 @@
             } catch (error) { console.error("Critical error during Cesium setup:", error); loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message}`; }
         }
 
-        function buildMaterialFilterUI() { /* Unchanged */ const select = document.getElementById('material-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Materials'; select.appendChild(allOption); materialList.forEach(material => { const option = document.createElement('option'); option.value = material; option.textContent = material; select.appendChild(option); }); }
-        function buildEntrepriseFilterUI() { /* Unchanged */ const select = document.getElementById('entreprise-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Companies'; select.appendChild(allOption); companyList.forEach(company => { const option = document.createElement('option'); option.value = company; option.textContent = company; select.appendChild(option); }); }
+        function buildMaterialFilterUI() { const select = document.getElementById('material-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Materials'; select.appendChild(allOption); materialList.forEach(material => { const option = document.createElement('option'); option.value = material; option.textContent = material; select.appendChild(option); }); }
+        function buildEntrepriseFilterUI() { const select = document.getElementById('entreprise-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Companies'; select.appendChild(allOption); companyList.forEach(company => { const option = document.createElement('option'); option.value = company; option.textContent = company; select.appendChild(option); }); }
         
         function navigateToPr(pr) { const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; document.getElementById('material-search').value = ''; appState.materialSearch = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
         
-        function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; if (propName.startsWith('cesium#')) continue; let displayName = propName.replace('excelLayerInfo', ''); let propValue = feature.getProperty(propName); content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
+        // --- Updated function to filter properties ---
+        function displayFeatureInfo(feature) {
+            const infobox = document.getElementById('infobox');
+            const propertyIds = feature.getPropertyIds();
+            let content = '<h3>Selected Feature</h3><table>';
+
+            for (let i = 0; i < propertyIds.length; i++) {
+                const propName = propertyIds[i];
+                const displayName = propName.replace('excelLayerInfo', '');
+
+                // Check if the cleaned property name is in our allowed list
+                if (allowedProperties.includes(displayName.toUpperCase())) {
+                    let propValue = feature.getProperty(propName);
+                    propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue;
+                    content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`;
+                }
+            }
+            content += '</table>';
+            infobox.innerHTML = content;
+            infobox.style.display = 'block';
+        }
         
-        // --- New Measurement Tool Functions ---
         function activateMeasurement() {
             isMeasuring = true;
             document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click to finish)';
@@ -230,75 +250,46 @@
             let totalDistance = 0;
             let dynamicLine, distanceLabel;
 
-            // Handle mouse move to draw dynamic line and show distance
             measurementHandler.setInputAction(function (movement) {
                 if (positions.length === 0) return;
                 const cartesian = viewer.scene.pickPosition(movement.endPosition);
                 if (!Cesium.defined(cartesian)) return;
-
-                if (!Cesium.defined(dynamicLine)) {
-                    dynamicLine = measurementDataSource.entities.add({
-                        polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW }
-                    });
-                }
-
+                if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); }
                 const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian);
-                const currentTotal = totalDistance + segmentDistance;
                 distanceLabel.position = cartesian;
-                distanceLabel.label.text = `Total: ${currentTotal.toFixed(2)} m`;
+                distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`;
             }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
-            // Handle left click to add a point
             measurementHandler.setInputAction(function (click) {
                 const cartesian = viewer.scene.pickPosition(click.position);
                 if (!Cesium.defined(cartesian)) return;
-                
                 positions.push(cartesian);
                 if (positions.length > 1) {
                     const lastPoint = positions[positions.length - 2];
-                    const newPoint = positions[positions.length - 1];
-                    totalDistance += Cesium.Cartesian3.distance(lastPoint, newPoint);
-
-                    measurementDataSource.entities.add({
-                        polyline: { positions: [lastPoint, newPoint], width: 3, material: Cesium.Color.ORANGERED }
-                    });
+                    totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian);
+                    measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } });
                 }
-                
                 measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } });
-
-                if (!Cesium.defined(distanceLabel)) {
-                    distanceLabel = measurementDataSource.entities.add({
-                        position: cartesian,
-                        label: { text: 'Start measuring', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) }
-                    });
-                }
+                if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start measuring', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); }
             }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-            // Handle right click to finish measurement
-            measurementHandler.setInputAction(function () {
-                deactivateMeasurement();
-            }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+            measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK);
         }
 
         function deactivateMeasurement() {
             isMeasuring = false;
-            if (Cesium.defined(measurementHandler)) {
-                measurementHandler.destroy();
-                measurementHandler = undefined;
-            }
+            if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; }
             measurementDataSource.entities.removeAll();
             document.getElementById('measure-btn').textContent = 'Activate Measurement Tool';
             document.getElementById('measure-btn').style.backgroundColor = '#444';
         }
 
-
         function setupEventListeners() {
             const measureBtn = document.getElementById('measure-btn');
             const selectionHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
 
-            // --- Click handler for selection ---
             const selectFeatureAction = function (movement) {
-                if (isMeasuring) return; // Do not select if measuring
+                if (isMeasuring) return;
                 if (Cesium.defined(selectedFeature)) { selectedFeature.color = originalColor; selectedFeature = undefined; }
                 const pickedFeature = viewer.scene.pick(movement.position);
                 const infobox = document.getElementById('infobox');
@@ -311,13 +302,7 @@
             };
             selectionHandler.setInputAction(selectFeatureAction, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-            // --- Toggle Measurement Tool ---
-            measureBtn.addEventListener('click', () => {
-                if (isMeasuring) { deactivateMeasurement(); } 
-                else { activateMeasurement(); }
-            });
-
-            // --- Other event listeners ---
+            measureBtn.addEventListener('click', () => { if (isMeasuring) { deactivateMeasurement(); } else { activateMeasurement(); } });
             document.getElementById('basemap-picker').addEventListener('change', (event) => { const selectedBasemap = event.target.value; if (selectedBasemap === 'photorealistic') { if(photorealisticTileset) photorealisticTileset.show = true; defaultImageryLayer.show = false; viewer.scene.globe.baseColor = Cesium.Color.BLACK; } else { if(photorealisticTileset) photorealisticTileset.show = false; defaultImageryLayer.show = true; viewer.scene.globe.baseColor = Cesium.Color.TRANSPARENT; } });
             document.getElementById('pr-search').addEventListener('input', () => { const value = document.getElementById('pr-search').value.toLowerCase(); const autocompleteResults = document.getElementById('autocomplete-results'); autocompleteResults.innerHTML = ''; if (!value) { appState.prSearch = ''; updateTilesetStyle(); return; } const filteredPRs = prList.filter(pr => pr.toLowerCase().startsWith(value)); filteredPRs.forEach(pr => { const item = document.createElement('div'); item.className = 'autocomplete-item'; item.textContent = pr; item.addEventListener('click', () => navigateToPr(pr)); autocompleteResults.appendChild(item); }); });
             document.getElementById('prev-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex > 0) { navigateToPr(prList[appState.currentPrIndex - 1]); } });
