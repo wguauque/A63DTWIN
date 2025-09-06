@@ -103,7 +103,6 @@
         let myTileset;
         let defaultStyle;
         let viewer; 
-        // Variables for new basemaps
         let photorealisticTileset;
         let defaultImageryLayer;
         
@@ -204,16 +203,17 @@
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
-                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyY2I0NzZkYy0zY2E1LTQyZjItOGExMC0xODdhNDFjMzhkNTQiLCJpZCI6MjgzODIyLCJpYXQiOjE3NDE4NDIzNDN9.vKLm9Z15kR3oMQfUkQH5F4vNithJ-vOKHRya8dlHdXY";
+                // --- TOKEN UPDATED HERE ---
+                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjOWE1NDNmOC02MzkxLTQyMWUtODFiOC1iYzMwZTZkMjg0OTUiLCJpZCI6MjgzODIyLCJpYXQiOjE3NTcxMjM2OTN9.SLvGBcu3zALbkrbRqQZS4KRrn960cXEbpW-7xWIavCY";
+                
                 viewer = new Cesium.Viewer("cesiumContainer", {
                     timeline: false, animation: false, sceneModePicker: false, 
-                    baseLayer: false, // Changed: Manual control over base layer
+                    baseLayer: false, 
                     geocoder: true, 
                     creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false 
                 });
                 viewer.scene.globe.enableLighting = true;
                 
-                // --- New Basemap Logic ---
                 defaultImageryLayer = viewer.scene.imageryLayers.addImageryProvider(
                     await Cesium.createWorldImageryAsync()
                 );
@@ -222,12 +222,11 @@
                 try {
                     photorealisticTileset = await Cesium.Cesium3DTileset.fromIonAssetId(2275703);
                     viewer.scene.primitives.add(photorealisticTileset);
-                    photorealisticTileset.show = false; // Initially hidden
+                    photorealisticTileset.show = false; 
                 } catch (error) {
                     console.error("Could not load Photorealistic 3D Tiles:", error);
                     document.getElementById('basemap-picker').disabled = true;
                 }
-                // --- End New Basemap Logic ---
 
                 loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
                 viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
@@ -305,9 +304,8 @@
             const materialFilter = document.getElementById('material-filter');
             const entrepriseFilter = document.getElementById('entreprise-filter');
             const materialSearch = document.getElementById('material-search');
-            const basemapPicker = document.getElementById('basemap-picker'); // New picker element
+            const basemapPicker = document.getElementById('basemap-picker');
 
-            // --- New Event Listener for Basemap ---
             basemapPicker.addEventListener('change', (event) => {
                 const selectedBasemap = event.target.value;
                 if (selectedBasemap === 'photorealistic') {
