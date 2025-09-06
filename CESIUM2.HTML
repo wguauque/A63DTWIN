@@ -120,16 +120,16 @@
         function getMaterialColor(material) {
             const upperMaterial = material.toUpperCase();
             if (upperMaterial.includes('BBSG') || upperMaterial.includes('BBTM') || upperMaterial.includes('BBME') || upperMaterial.includes('EME') || upperMaterial.includes('BBDR') || upperMaterial.includes('ACCOUSTIQ') || upperMaterial.includes('ACC')) {
-                return Cesium.Color.DARKSLATEGRAY.toCssColorString(); // Asphalt layers
+                return Cesium.Color.DARKSLATEGRAY.toCssColorString();
             }
             if (upperMaterial.includes('GB') || upperMaterial.includes('GNT')) {
-                return Cesium.Color.GRAY.toCssColorString(); // Base layers
+                return Cesium.Color.GRAY.toCssColorString();
             }
             if (upperMaterial.includes('SB') || upperMaterial.includes('GTLH') || upperMaterial.includes('FORME')) {
-                return Cesium.Color.BURLYWOOD.toCssColorString(); // Subbase layers
+                return Cesium.Color.BURLYWOOD.toCssColorString();
             }
             if (upperMaterial.includes('BET') || upperMaterial.includes('CBX')) {
-                return Cesium.Color.LIGHTGRAY.toCssColorString(); // Concrete
+                return Cesium.Color.LIGHTGRAY.toCssColorString();
             }
             if (upperMaterial.includes('GEOTEXTILE')) {
                 return Cesium.Color.WHITESMOKE.toCssColorString();
@@ -137,7 +137,7 @@
             if (upperMaterial.includes('ETANCH')) {
                 return Cesium.Color.STEELBLUE.toCssColorString();
             }
-            return Cesium.Color.DIMGRAY.toCssColorString(); // Default for 'Autres', etc.
+            return Cesium.Color.DIMGRAY.toCssColorString();
         }
 
         function updateTilesetStyle() {
@@ -196,14 +196,12 @@
             }, 250); 
         }
 
-
         // ===================================================================================
         // --- MAIN APPLICATION SETUP ---
         // ===================================================================================
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
-                // --- TOKEN UPDATED HERE ---
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjOWE1NDNmOC02MzkxLTQyMWUtODFiOC1iYzMwZTZkMjg0OTUiLCJpZCI6MjgzODIyLCJpYXQiOjE3NTcxMjM2OTN9.SLvGBcu3zALbkrbRqQZS4KRrn960cXEbpW-7xWIavCY";
                 
                 viewer = new Cesium.Viewer("cesiumContainer", {
@@ -219,14 +217,18 @@
                 );
                 
                 loadingOverlay.querySelector('h1').textContent = "Loading Basemap...";
+                // --- MODIFIED LOADING METHOD ---
+                // This is a more direct and reliable way to load the Google 3D Tiles.
                 try {
-                    photorealisticTileset = await Cesium.Cesium3DTileset.fromIonAssetId(2275703);
+                    photorealisticTileset = await Cesium.createGooglePhotorealistic3DTileset();
                     viewer.scene.primitives.add(photorealisticTileset);
                     photorealisticTileset.show = false; 
                 } catch (error) {
-                    console.error("Could not load Photorealistic 3D Tiles:", error);
+                    console.error("Could not load Google Photorealistic 3D Tiles:", error);
+                    alert("Failed to load Photorealistic 3D tiles. Check the browser console (F12) for more details.");
                     document.getElementById('basemap-picker').disabled = true;
                 }
+                // --- END MODIFICATION ---
 
                 loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
                 viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
@@ -260,8 +262,7 @@
                 loadingOverlay.style.opacity = '0';
                 setTimeout(() => { loadingOverlay.style.display = 'none'; }, 500);
 
-            } catch (error)
-            {
+            } catch (error) {
                 console.error("Critical error during Cesium setup:", error);
                 loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message}`;
             }
@@ -296,7 +297,6 @@
                 select.appendChild(option);
             });
         }
-
 
         function setupEventListeners() {
             const prSearchInput = document.getElementById('pr-search');
