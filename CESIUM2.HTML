@@ -52,7 +52,7 @@
         
         <span class="toolbar-group-label">Navigate Highway (by PR)</span>
         <div class="pr-search-container">
-            <input type="text" id="pr-search" placeholder="Search PR (e.g., 98000)">
+            <input type="text" id="pr-search" placeholder="Search PR (e.g., 98)">
             <div id="autocomplete-results"></div>
         </div>
         <div id="navigation-controls" style="display: flex; justify-content: space-between; margin-top: 8px;">
@@ -86,8 +86,9 @@
             'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER'
         ];
 
+        // --- Updated PR list for simplified values ---
         const prList = [];
-        for (let i = 34000; i <= 140000; i += 1000) {
+        for (let i = 34; i <= 140; i++) {
             prList.push(i.toString());
         }
 
@@ -102,7 +103,7 @@
             entrepriseFilter: '',
             materialSearch: '',
             prSearch: '',
-            currentPrIndex: -1 // New state for navigation
+            currentPrIndex: -1 
         };
 
         function getMaterialColor(material) {
@@ -123,9 +124,14 @@
             if (appState.entrepriseFilter) { showConditions.push(`\${excelLayerInfoENTREPRISE} === '${appState.entrepriseFilter}'`); }
             const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
             let colorExpression;
-            if (appState.prSearch) { colorExpression = `Number(\${excelLayerInfoPR1}) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`; } 
-            else if (appState.materialSearch) { colorExpression = `regExp('${appState.materialSearch}', 'i').test(\${name_1}) ? color('yellow') : defaultStyle.color.expression`; }
-            else { colorExpression = defaultStyle.color.expression; }
+            if (appState.prSearch) {
+                // --- Updated PR matching logic ---
+                colorExpression = `round(Number(\${excelLayerInfoPR1}) / 1000) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`; 
+            } else if (appState.materialSearch) { 
+                colorExpression = `regExp('${appState.materialSearch}', 'i').test(\${name_1}) ? color('yellow') : defaultStyle.color.expression`; 
+            } else { 
+                colorExpression = defaultStyle.color.expression; 
+            }
             myTileset.style = new Cesium.Cesium3DTileStyle({ show: showExpression, color: colorExpression });
         }
 
@@ -133,10 +139,13 @@
             if (!myTileset || !viewer || !prValue) return;
             const prNumber = Number(prValue);
             if (isNaN(prNumber)) return;
-            const lowerBound = prNumber - 500;
-            const upperBound = prNumber + 500;
-            const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `Number(\${excelLayerInfoPR1}) >= ${lowerBound} && Number(\${excelLayerInfoPR1}) < ${upperBound}` });
+            
+            // --- Updated zoom logic to isolate the exact simplified PR ---
+            const zoomStyle = new Cesium.Cesium3DTileStyle({
+                show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}`
+            });
             myTileset.style = zoomStyle;
+
             setTimeout(async () => {
                 try {
                     await viewer.flyTo(myTileset, { 
@@ -157,23 +166,20 @@
                     timeline: false, animation: false, sceneModePicker: false, 
                     baseLayer: false, geocoder: true, 
                     creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false,
-                    // --- Performance Optimization ---
                     requestRenderMode: true,
                     maximumRenderTimeChange: Infinity
                 });
                 
-                // --- Performance & Navigation Optimizations ---
                 viewer.scene.globe.enableLighting = true;
                 viewer.scene.fog.enabled = true;
-                viewer.scene.fog.density = 0.0002; // Adjust for desired fog intensity
-                viewer.scene.screenSpaceCameraController.minimumZoomDistance = 100; // Prevents zooming through ground
+                viewer.scene.fog.density = 0.0002;
+                viewer.scene.screenSpaceCameraController.minimumZoomDistance = 100;
                 
                 defaultImageryLayer = viewer.scene.imageryLayers.addImageryProvider(await Cesium.createWorldImageryAsync());
                 
                 loadingOverlay.querySelector('h1').textContent = "Loading Basemap...";
                 try {
                     photorealisticTileset = await Cesium.createGooglePhotorealistic3DTileset();
-                    // --- Performance Optimization for photorealistic tiles ---
                     photorealisticTileset.dynamicScreenSpaceError = true;
                     photorealisticTileset.dynamicScreenSpaceErrorDensity = 0.00278;
                     photorealisticTileset.dynamicScreenSpaceErrorFactor = 4.0;
@@ -246,7 +252,6 @@
             });
         }
 
-        // --- New function to handle navigating to a specific PR ---
         function navigateToPr(pr) {
             const prSearchInput = document.getElementById('pr-search');
             prSearchInput.value = pr;
@@ -266,7 +271,6 @@
             const entrepriseFilter = document.getElementById('entreprise-filter');
             const materialSearch = document.getElementById('material-search');
             const basemapPicker = document.getElementById('basemap-picker');
-            // --- New Navigation Button Listeners ---
             const prevPrBtn = document.getElementById('prev-pr-btn');
             const nextPrBtn = document.getElementById('next-pr-btn');
 
