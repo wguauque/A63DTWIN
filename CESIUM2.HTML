@@ -22,30 +22,10 @@
         #toolbar button { background-color: #444; cursor: pointer; text-align: left; }
 
         .pr-search-container { position: relative; }
-        #autocomplete-results {
-            position: absolute;
-            top: 100%; left: 2px; right: 2px;
-            background: #3a3a3a; border: 1px solid #777; border-top: none;
-            border-radius: 0 0 4px 4px; z-index: 1002;
-            max-height: 200px; overflow-y: auto;
-        }
+        #autocomplete-results { position: absolute; top: 100%; left: 2px; right: 2px; background: #3a3a3a; border: 1px solid #777; border-top: none; border-radius: 0 0 4px 4px; z-index: 1002; max-height: 200px; overflow-y: auto; }
         .autocomplete-item { padding: 8px; color: #fff; cursor: pointer; }
         .autocomplete-item:hover { background-color: #555; }
-        #infobox {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(35, 35, 35, 0.9);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            display: none;
-            max-width: 320px;
-            border: 1px solid #666;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            z-index: 1000;
-            font-size: 0.9em;
-        }
+        #infobox { position: absolute; bottom: 20px; right: 20px; background: rgba(35, 35, 35, 0.9); color: white; padding: 12px; border-radius: 8px; display: none; max-width: 320px; border: 1px solid #666; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 1000; font-size: 0.9em; }
         #infobox h3 { margin-top: 0; padding-bottom: 5px; border-bottom: 1px solid #555; color: #00bcd4; }
         #infobox table { width: 100%; border-collapse: collapse; }
         #infobox th, #infobox td { padding: 5px 2px; text-align: left; }
@@ -116,7 +96,6 @@
         let isMeasuring = false;
         let measurementDataSource, measurementHandler;
         
-        // --- New variables for clipping tool ---
         let isClipping = false;
         let clippingDataSource, clippingHandler;
 
@@ -124,27 +103,22 @@
 
         function getMaterialColor(material) { const upperMaterial = material.toUpperCase(); if (upperMaterial.includes('BBSG') || upperMaterial.includes('BBTM') || upperMaterial.includes('BBME') || upperMaterial.includes('EME') || upperMaterial.includes('BBDR') || upperMaterial.includes('ACCOUSTIQ') || upperMaterial.includes('ACC')) { return Cesium.Color.DARKSLATEGRAY.toCssColorString(); } if (upperMaterial.includes('GB') || upperMaterial.includes('GNT')) { return Cesium.Color.GRAY.toCssColorString(); } if (upperMaterial.includes('SB') || upperMaterial.includes('GTLH') || upperMaterial.includes('FORME')) { return Cesium.Color.BURLYWOOD.toCssColorString(); } if (upperMaterial.includes('BET') || upperMaterial.includes('CBX')) { return Cesium.Color.LIGHTGRAY.toCssColorString(); } if (upperMaterial.includes('GEOTEXTILE')) { return Cesium.Color.WHITESMOKE.toCssColorString(); } if (upperMaterial.includes('ETANCH')) { return Cesium.Color.STEELBLUE.toCssColorString(); } return Cesium.Color.DIMGRAY.toCssColorString(); }
 
-        // --- FIXED FUNCTION TO HANDLE INVALID DATES ---
         function applyDateStyle() {
             if (!myTileset) return;
             const now = new Date();
             const year15Ago = now.getFullYear() - 15;
             const year30Ago = now.getFullYear() - 30;
 
+            const yearExpression = "Number(regExp('^([0-9]{4})').exec(String(${excelLayerInfoDATEMS}))[1])";
+
             myTileset.style = new Cesium.Cesium3DTileStyle({
-                defines: {
-                    // This expression safely extracts the year. It results in a number
-                    // if the format is "YYYY-..." and NaN if the property is null or invalid.
-                    year: "Number(regExp('^([0-9]{4})').exec(String(${excelLayerInfoDATEMS}))[1])"
-                },
                 color: {
                     conditions: [
-                        // First, handle any feature where the date is null or invalid by coloring it gray.
-                        ["isNaN(${year})", "color('gray')"],
-                        // Then, apply colors based on the valid numeric year.
-                        ["${year} < " + year30Ago, "color('red')"],
-                        ["${year} < " + year15Ago, "color('yellow')"],
-                        ["true", "color('lime')"]
+                        [`!regExp('^([0-9]{4})').test(String(\${excelLayerInfoDATEMS}))`, "color('gray')"], // More robust check for invalid format
+                        [`${yearExpression} < ${year30Ago}`, "color('red')"],
+                        [`${yearExpression} >= ${year30Ago} && ${yearExpression} < ${year15Ago}`, "color('yellow')"],
+                        [`${yearExpression} >= ${year15Ago}`, "color('lime')"],
+                        ['true', "color('gray')"]
                     ]
                 }
             });
@@ -189,7 +163,6 @@
                 defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
                 myTileset.style = defaultStyle;
 
-                // --- Initialize DataSources for tools ---
                 measurementDataSource = new Cesium.CustomDataSource('measurementDataSource');
                 viewer.dataSources.add(measurementDataSource);
                 clippingDataSource = new Cesium.CustomDataSource('clippingDataSource');
@@ -207,76 +180,14 @@
         function buildMaterialFilterUI() { const select = document.getElementById('material-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Materials'; select.appendChild(allOption); materialList.forEach(material => { const option = document.createElement('option'); option.value = material; option.textContent = material; select.appendChild(option); }); }
         function buildEntrepriseFilterUI() { const select = document.getElementById('entreprise-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Companies'; select.appendChild(allOption); companyList.forEach(company => { const option = document.createElement('option'); option.value = company; option.textContent = company; select.appendChild(option); }); }
         
-        function navigateToPr(pr) { deactivateDateView(); const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; document.getElementById('material-search').value = ''; appState.materialSearch = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
+        function navigateToPr(pr) { deactivateDateView(); deactivateClippingTool(); const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; document.getElementById('material-search').value = ''; appState.materialSearch = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
         
         function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; const displayName = propName.replace('excelLayerInfo', ''); if (allowedProperties.includes(displayName.toUpperCase())) { let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
         
         function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click to finish)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start measuring', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
         function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#444'; }
         
-        // --- New Clipping Tool Functions ---
-        function activateClippingTool() {
-            isClipping = true;
-            const clipBtn = document.getElementById('clip-btn');
-            clipBtn.textContent = 'Drawing... (Right-click to finish)';
-            clipBtn.style.backgroundColor = '#00bcd4';
-
-            clippingHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-            let points = [];
-            let polygonEntity;
-
-            clippingHandler.setInputAction(function(click) {
-                const cartesian = viewer.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid);
-                if (cartesian) {
-                    points.push(cartesian);
-                    clippingDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.WHITE } });
-                }
-            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-            clippingHandler.setInputAction(function(movement) {
-                if (points.length < 1) return;
-                const cartesian = viewer.camera.pickEllipsoid(movement.endPosition, viewer.scene.globe.ellipsoid);
-                if (cartesian) {
-                    if (!polygonEntity) {
-                        polygonEntity = clippingDataSource.entities.add({
-                            polygon: {
-                                hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(points.concat(cartesian)), false),
-                                material: Cesium.Color.WHITE.withAlpha(0.3),
-                                outline: true,
-                                outlineColor: Cesium.Color.WHITE
-                            }
-                        });
-                    }
-                }
-            }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
-
-            clippingHandler.setInputAction(function() {
-                if (points.length < 3) {
-                    deactivateClippingTool();
-                    return;
-                }
-                const clippingPlanes = [];
-                for (let i = 0; i < points.length; ++i) {
-                    const nextIndex = (i + 1) % points.length;
-                    let midpoint = Cesium.Cartesian3.add(points[i], points[nextIndex], new Cesium.Cartesian3());
-                    Cesium.Cartesian3.multiplyByScalar(midpoint, 0.5, midpoint);
-                    const up = Cesium.Cartesian3.normalize(midpoint, new Cesium.Cartesian3());
-                    let right = Cesium.Cartesian3.subtract(points[nextIndex], midpoint, new Cesium.Cartesian3());
-                    right = Cesium.Cartesian3.normalize(right, right);
-                    let normal = Cesium.Cartesian3.cross(right, up, new Cesium.Cartesian3());
-                    normal = Cesium.Cartesian3.normalize(normal, normal);
-                    const plane = new Cesium.Plane.fromPointNormal(midpoint, normal);
-                    clippingPlanes.push(new Cesium.ClippingPlane.fromPlane(plane));
-                }
-                
-                myTileset.clippingPlanes = new Cesium.ClippingPlaneCollection({
-                    planes: clippingPlanes,
-                    edgeWidth: 1.0,
-                    edgeColor: Cesium.Color.WHITE,
-                });
-                deactivateClippingTool();
-            }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
-        }
+        function activateClippingTool() { isClipping = true; const clipBtn = document.getElementById('clip-btn'); clipBtn.textContent = 'Drawing... (Right-click to finish)'; clipBtn.style.backgroundColor = '#00bcd4'; clippingHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let points = []; let polygonEntity; clippingHandler.setInputAction(function(click) { const cartesian = viewer.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid); if (cartesian) { points.push(cartesian); clippingDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.WHITE } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); clippingHandler.setInputAction(function(movement) { if (points.length < 1) return; const cartesian = viewer.camera.pickEllipsoid(movement.endPosition, viewer.scene.globe.ellipsoid); if (cartesian) { if (!polygonEntity) { polygonEntity = clippingDataSource.entities.add({ polygon: { hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(points.concat(cartesian)), false), material: Cesium.Color.WHITE.withAlpha(0.3), outline: true, outlineColor: Cesium.Color.WHITE } }); } } }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); clippingHandler.setInputAction(function() { if (points.length < 3) { deactivateClippingTool(); return; } const clippingPlanes = []; for (let i = 0; i < points.length; ++i) { const nextIndex = (i + 1) % points.length; let midpoint = Cesium.Cartesian3.add(points[i], points[nextIndex], new Cesium.Cartesian3()); Cesium.Cartesian3.multiplyByScalar(midpoint, 0.5, midpoint); const up = Cesium.Cartesian3.normalize(midpoint, new Cesium.Cartesian3()); let right = Cesium.Cartesian3.subtract(points[nextIndex], midpoint, new Cesium.Cartesian3()); right = Cesium.Cartesian3.normalize(right, right); let normal = Cesium.Cartesian3.cross(right, up, new Cesium.Cartesian3()); normal = Cesium.Cartesian3.normalize(normal, normal); const plane = Cesium.Plane.fromPointNormal(midpoint, normal); clippingPlanes.push(new Cesium.ClippingPlane.fromPlane(plane)); } if (!myTileset.clippingPlanes) { myTileset.clippingPlanes = new Cesium.ClippingPlaneCollection({ edgeWidth: 1.0, edgeColor: Cesium.Color.WHITE }); } clippingPlanes.forEach(plane => myTileset.clippingPlanes.add(plane)); deactivateClippingTool(); }, Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
         function deactivateClippingTool() { isClipping = false; if (clippingHandler) { clippingHandler.destroy(); clippingHandler = undefined; } clippingDataSource.entities.removeAll(); const clipBtn = document.getElementById('clip-btn'); clipBtn.textContent = 'Activate Clipping Tool'; clipBtn.style.backgroundColor = '#444'; }
         function clearClippingPlanes() { if (myTileset && myTileset.clippingPlanes) { myTileset.clippingPlanes.removeAll(); } }
         
@@ -309,5 +220,4 @@
         
         main();
     </script>
-</body>
-</html>
+</body></html>
