@@ -128,7 +128,7 @@
             return Cesium.Color.DIMGRAY.toCssColorString();
         }
 
-        // --- FIXED FUNCTION TO USE NUMERIC YEAR COMPARISON ---
+        // --- FIXED FUNCTION TO HANDLE INVALID DATES ---
         function applyDateStyle() {
             if (!myTileset) return;
 
@@ -136,22 +136,25 @@
             const year15Ago = now.getFullYear() - 15;
             const year30Ago = now.getFullYear() - 30;
 
-            // This expression uses a regular expression to extract the 4-digit year 
-            // from the start of the date string and converts it to a number.
-            const yearExpression = "Number(regExp('^([0-9]{4})').exec(String(${excelLayerInfoDATEMS}))[1])";
-
             myTileset.style = new Cesium.Cesium3DTileStyle({
+                defines: {
+                    // This expression safely extracts the year. It results in a number
+                    // if the format is "YYYY-..." and NaN if the property is null or invalid.
+                    year: "Number(regExp('^([0-9]{4})').exec(String(${excelLayerInfoDATEMS}))[1])"
+                },
                 color: {
                     conditions: [
-                        // Now we compare the extracted year as a number
-                        [`${yearExpression} < ${year30Ago}`, "color('red')"],
-                        [`${yearExpression} >= ${year30Ago} && ${yearExpression} < ${year15Ago}`, "color('yellow')"],
-                        [`${yearExpression} >= ${year15Ago}`, "color('lime')"],
-                        ['true', "color('gray')"] // Default for features with an invalid date format
+                        // First, handle any feature where the date is null or invalid by coloring it gray.
+                        ["isNaN(${year})", "color('gray')"],
+                        // Then, apply colors based on the valid numeric year.
+                        ["${year} < " + year30Ago, "color('red')"],
+                        ["${year} < " + year15Ago, "color('yellow')"],
+                        ["true", "color('lime')"]
                     ]
                 }
             });
         }
+
 
         function updateTilesetStyle() {
             if (appState.isDateViewActive) {
