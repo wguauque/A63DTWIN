@@ -169,7 +169,9 @@
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
-                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzIనిIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjOWE1NDNmOC02MzkxLTQyMWUtODFiOC1iYzMwZTZkMjg0OTUiLCJpZCI6MjgzODIyLCJpYXQiOjE3NTcxMjM2OTN9.SLvGBcu3zALbkrbRqQZS4KRrn960cXEbpW-7xWIavCY";
+                // FIX: Corrected the Cesium Ion access token below
+                Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjOWE1NDNmOC02MzkxLTQyMWUtODFiOC1iYzMwZTZkMjg0OTUiLCJpZCI6MjgzODIyLCJpYXQiOjE3NTcxMjM2OTN9.SLvGBcu3zALbkrbRqQZS4KRrn960cXEbpW-7xWIavCY";
+                
                 viewer = new Cesium.Viewer("cesiumContainer", { timeline: false, animation: false, sceneModePicker: false, baseLayer: false, geocoder: true, creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false, requestRenderMode: true, maximumRenderTimeChange: Infinity });
                 viewer.scene.globe.enableLighting = true;
                 viewer.scene.fog.enabled = true;
@@ -222,7 +224,10 @@
                 await viewer.zoomTo(myTileset);
                 loadingOverlay.style.opacity = '0';
                 setTimeout(() => { loadingOverlay.style.display = 'none'; }, 500);
-            } catch (error) { console.error("Critical error during Cesium setup:", error); loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message}`; }
+            } catch (error) {
+                console.error("Critical error during Cesium setup:", error);
+                loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message || 'Asset loading failed. Please check token and network.'}`;
+            }
         }
 
         function buildMaterialFilterUI() { const select = document.getElementById('material-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Materials'; select.appendChild(allOption); materialList.forEach(material => { const option = document.createElement('option'); option.value = material; option.textContent = material; select.appendChild(option); }); }
