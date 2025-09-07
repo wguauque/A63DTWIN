@@ -31,18 +31,29 @@
         #infobox th, #infobox td { padding: 5px 2px; text-align: left; }
         #infobox th { font-weight: bold; color: #ccc; width: 40%; }
         
-        #date-ramp-banner { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(35, 35, 35, 0.9); color: white; padding: 15px; border-radius: 8px; border: 1px solid #666; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 1001; display: none; flex-direction: column; align-items: center; }
+        /* --- New styles for Date Ramp Banner --- */
+        #date-ramp-banner {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(35, 35, 35, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #666;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            z-index: 1001;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+        }
         #date-ramp-banner h3 { margin: 0 0 10px 0; color: #00bcd4; }
         #date-ramp-legend { display: flex; gap: 15px; margin-bottom: 10px; font-size: 0.85em; }
         .legend-item { display: flex; align-items: center; }
         .color-box { width: 15px; height: 15px; margin-right: 5px; border: 1px solid #888; }
         #date-ramp-controls { display: flex; gap: 10px; width: 100%; }
         #date-ramp-controls button { width: 50%; text-align: center; }
-
-        /* --- NEW: Styles for added clipping controls --- */
-        .clipping-control { display: flex; align-items: center; padding: 4px 2px; }
-        #toolbar input[type="checkbox"] { width: auto; margin-right: 8px; }
-        #toolbar .clipping-control label { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -68,17 +79,7 @@
         <button id="measure-btn">Activate Measurement Tool</button>
         <button id="show-date-ramp-btn">Intervention Date Ramp</button>
         <button id="clip-btn">Activate Clipping Tool</button>
-        <button id="clear-clips-btn">Clear All Clips</button>
-
-        <div class="clipping-control">
-            <input type="checkbox" id="enable-clipping-cb" checked>
-            <label for="enable-clipping-cb">Enable Clipping</label>
-        </div>
-        <div class="clipping-control">
-            <input type="checkbox" id="inverse-clipping-cb">
-            <label for="inverse-clipping-cb">Inverse Clipping</label>
-        </div>
-        <button id="remove-polygon-btn" style="text-align: center;">Remove Last Polygon</button>
+        <button id="clear-clips-btn">Clear Clips</button>
         
         <span class="toolbar-group-label">Navigate Highway (by PR)</span>
         <div class="pr-search-container">
@@ -143,6 +144,7 @@
 
         function applyDateStyle() {
             if (!myTileset) return;
+            // This new style uses simple string matching which is very reliable.
             myTileset.style = new Cesium.Cesium3DTileStyle({
                 color: {
                     conditions: [
@@ -150,7 +152,7 @@
                         ["regExp('^201').test(String(${excelLayerInfoDATEMS}))", "color('lime')"],
                         ["regExp('^200').test(String(${excelLayerInfoDATEMS}))", "color('yellow')"],
                         ["regExp('^19').test(String(${excelLayerInfoDATEMS}))", "color('red')"],
-                        ["true", "color('gray')"]
+                        ["true", "color('gray')"] // Fallback for null or other formats
                     ]
                 }
             });
@@ -195,6 +197,7 @@
                 defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
                 myTileset.style = defaultStyle;
 
+                // **MODIFIED**: Initialize the ClippingPolygonCollection for the tileset
                 myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
                     edgeWidth: 1.0,
                     edgeColor: Cesium.Color.WHITE,
@@ -224,10 +227,61 @@
         function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click to finish)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start measuring', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
         function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#444'; }
         
-        function activateClippingTool() { isClipping = true; const clipBtn = document.getElementById('clip-btn'); clipBtn.textContent = 'Drawing... (Right-click to finish)'; clipBtn.style.backgroundColor = '#00bcd4'; clippingHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let points = []; let polygonEntity; clippingHandler.setInputAction(function(click) { const cartesian = viewer.scene.pickPosition(click.position); if (cartesian) { points.push(cartesian); clippingDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.WHITE } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); clippingHandler.setInputAction(function(movement) { if (points.length < 1) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (cartesian) { if (!polygonEntity) { polygonEntity = clippingDataSource.entities.add({ polygon: { hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(points.concat(cartesian)), false), material: Cesium.Color.WHITE.withAlpha(0.3), outline: true, outlineColor: Cesium.Color.WHITE, heightReference: Cesium.HeightReference.CLAMP_TO_GROUND } }); } } }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); clippingHandler.setInputAction(function() { if (points.length < 3) { deactivateClippingTool(); return; } myTileset.clippingPolygons.add(new Cesium.ClippingPolygon({ positions: points, })); deactivateClippingTool(); }, Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
+        // **MODIFIED**: This function now uses ClippingPolygonCollection
+        function activateClippingTool() {
+            isClipping = true;
+            const clipBtn = document.getElementById('clip-btn');
+            clipBtn.textContent = 'Drawing... (Right-click to finish)';
+            clipBtn.style.backgroundColor = '#00bcd4';
+            clippingHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+            let points = [];
+            let polygonEntity;
+            clippingHandler.setInputAction(function(click) {
+                const cartesian = viewer.scene.pickPosition(click.position);
+                if (cartesian) {
+                    points.push(cartesian);
+                    clippingDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.WHITE } });
+                }
+            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+            clippingHandler.setInputAction(function(movement) {
+                if (points.length < 1) return;
+                const cartesian = viewer.scene.pickPosition(movement.endPosition);
+                if (cartesian) {
+                    if (!polygonEntity) {
+                        polygonEntity = clippingDataSource.entities.add({
+                            polygon: {
+                                hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(points.concat(cartesian)), false),
+                                material: Cesium.Color.WHITE.withAlpha(0.3),
+                                outline: true,
+                                outlineColor: Cesium.Color.WHITE,
+                                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+                            }
+                        });
+                    }
+                }
+            }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+            clippingHandler.setInputAction(function() {
+                if (points.length < 3) {
+                    deactivateClippingTool();
+                    return;
+                }
+                // Create a clipping polygon from the drawn points
+                const newClippingPolygon = new Cesium.ClippingPolygon({
+                    positions: points,
+                });
+                // Add it to the tileset's collection
+                myTileset.clippingPolygons.add(newClippingPolygon);
+                deactivateClippingTool();
+            }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+        }
         function deactivateClippingTool() { isClipping = false; if (clippingHandler) { clippingHandler.destroy(); clippingHandler = undefined; } clippingDataSource.entities.removeAll(); const clipBtn = document.getElementById('clip-btn'); clipBtn.textContent = 'Activate Clipping Tool'; clipBtn.style.backgroundColor = '#444'; }
         
-        function clearClippingPlanes() { if (myTileset && myTileset.clippingPolygons) { myTileset.clippingPolygons.removeAll(); } }
+        // **MODIFIED**: This function now clears ClippingPolygons
+        function clearClippingPlanes() {
+            if (myTileset && myTileset.clippingPolygons) {
+                myTileset.clippingPolygons.removeAll();
+            }
+        }
         
         function deactivateDateView() { appState.isDateViewActive = false; document.getElementById('date-ramp-banner').style.display = 'none'; updateTilesetStyle(); }
 
@@ -239,11 +293,6 @@
             const clipBtn = document.getElementById('clip-btn');
             const clearClipsBtn = document.getElementById('clear-clips-btn');
             const selectionHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-            
-            // NEW: References to clipping control UI elements
-            const enableClippingCb = document.getElementById('enable-clipping-cb');
-            const inverseClippingCb = document.getElementById('inverse-clipping-cb');
-            const removePolygonBtn = document.getElementById('remove-polygon-btn');
 
             const selectFeatureAction = function (movement) { if (isMeasuring || isClipping) return; if (Cesium.defined(selectedFeature)) { selectedFeature.color = originalColor; selectedFeature = undefined; } const pickedFeature = viewer.scene.pick(movement.position); const infobox = document.getElementById('infobox'); if (pickedFeature instanceof Cesium.Cesium3DTileFeature) { selectedFeature = pickedFeature; Cesium.Color.clone(selectedFeature.color, originalColor); selectedFeature.color = highlightColor; displayFeatureInfo(pickedFeature); } else { infobox.style.display = 'none'; } };
             selectionHandler.setInputAction(selectFeatureAction, Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -255,28 +304,6 @@
 
             clipBtn.addEventListener('click', () => { if (isClipping) { deactivateClippingTool(); } else { deactivateDateView(); deactivateMeasurement(); updateTilesetStyle(); activateClippingTool(); } });
             clearClipsBtn.addEventListener('click', clearClippingPlanes);
-
-            // NEW: Event listeners for clipping management
-            enableClippingCb.addEventListener('change', (e) => {
-                if (myTileset && myTileset.clippingPolygons) {
-                    myTileset.clippingPolygons.enabled = e.target.checked;
-                }
-            });
-
-            inverseClippingCb.addEventListener('change', (e) => {
-                if (myTileset && myTileset.clippingPolygons) {
-                    myTileset.clippingPolygons.inverse = e.target.checked;
-                }
-            });
-
-            removePolygonBtn.addEventListener('click', () => {
-                if (myTileset && myTileset.clippingPolygons && myTileset.clippingPolygons.length > 0) {
-                    myTileset.clippingPolygons.remove(
-                        myTileset.clippingPolygons.get(myTileset.clippingPolygons.length - 1)
-                    );
-                }
-            });
-
 
             document.getElementById('basemap-picker').addEventListener('change', (event) => { const selectedBasemap = event.target.value; if (selectedBasemap === 'photorealistic') { if(photorealisticTileset) photorealisticTileset.show = true; defaultImageryLayer.show = false; viewer.scene.globe.baseColor = Cesium.Color.BLACK; } else { if(photorealisticTileset) photorealisticTileset.show = false; defaultImageryLayer.show = true; viewer.scene.globe.baseColor = Cesium.Color.TRANSPARENT; } });
             document.getElementById('pr-search').addEventListener('input', () => { deactivateDateView(); const value = document.getElementById('pr-search').value.toLowerCase(); const autocompleteResults = document.getElementById('autocomplete-results'); autocompleteResults.innerHTML = ''; if (!value) { appState.prSearch = ''; updateTilesetStyle(); return; } const filteredPRs = prList.filter(pr => pr.toLowerCase().startsWith(value)); filteredPRs.forEach(pr => { const item = document.createElement('div'); item.className = 'autocomplete-item'; item.textContent = pr; item.addEventListener('click', () => navigateToPr(pr)); autocompleteResults.appendChild(item); }); });
