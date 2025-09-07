@@ -73,6 +73,7 @@
         
         <span class="toolbar-group-label">Tools</span>
         <button id="measure-btn">Activate Measurement Tool</button>
+        <button id="date-color-btn">Color by Date</button>
         
         <span class="toolbar-group-label">Navigate Highway (by PR)</span>
         <div class="pr-search-container">
@@ -103,7 +104,6 @@
         const prList = [];
         for (let i = 34; i <= 140; i++) { prList.push(i.toString()); }
         
-        // --- List of properties to display in the infobox ---
         const allowedProperties = ['TYPECOUCH', 'SURFACE', 'ENTREPRISE', 'PR1', 'NORDRE', 'CHANTIER', 'FOND', 'PR2', 'DATEMS'];
 
         let myTileset, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
@@ -115,7 +115,7 @@
         let measurementDataSource;
         let measurementHandler;
 
-        const appState = { materialFilter: '', entrepriseFilter: '', materialSearch: '', prSearch: '', currentPrIndex: -1 };
+        const appState = { materialFilter: '', entrepriseFilter: '', materialSearch: '', prSearch: '', currentPrIndex: -1, isDateViewActive: false };
 
         function getMaterialColor(material) {
             const upperMaterial = material.toUpperCase();
@@ -128,8 +128,37 @@
             return Cesium.Color.DIMGRAY.toCssColorString();
         }
 
+        function applyDateStyle() {
+            if (!myTileset) return;
+
+            const now = new Date();
+            const date15 = new Date(new Date().setFullYear(now.getFullYear() - 15));
+            const date30 = new Date(new Date().setFullYear(now.getFullYear() - 30));
+
+            const date15Str = date15.toISOString().split('T')[0];
+            const date30Str = date30.toISOString().split('T')[0];
+
+            const dateProperty = '${excelLayerInfoDATEMS}'; 
+
+            myTileset.style = new Cesium.Cesium3DTileStyle({
+                color: {
+                    conditions: [
+                        [`String(${dateProperty}) < '${date30Str}'`, "color('red')"],
+                        [`String(${dateProperty}) >= '${date30Str}' && String(${dateProperty}) < '${date15Str}'`, "color('yellow')"],
+                        [`String(${dateProperty}) >= '${date15Str}'`, "color('lime')"],
+                        ['true', "color('gray')"]
+                    ]
+                }
+            });
+        }
+
         function updateTilesetStyle() {
+            if (appState.isDateViewActive) {
+                applyDateStyle();
+                return; 
+            }
             if (!myTileset || !defaultStyle) return;
+
             let showConditions = [];
             if (appState.materialFilter) { showConditions.push(`\${name_1} === '${appState.materialFilter}'`); }
             if (appState.entrepriseFilter) { showConditions.push(`\${excelLayerInfoENTREPRISE} === '${appState.entrepriseFilter}'`); }
@@ -183,6 +212,7 @@
                 viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(3693677);
 
                 loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
+                // --- UPDATED ASSET ID ---
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3694449);
                 viewer.scene.primitives.add(myTileset);
                 await myTileset.readyPromise;
@@ -216,9 +246,8 @@
         function buildMaterialFilterUI() { const select = document.getElementById('material-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Materials'; select.appendChild(allOption); materialList.forEach(material => { const option = document.createElement('option'); option.value = material; option.textContent = material; select.appendChild(option); }); }
         function buildEntrepriseFilterUI() { const select = document.getElementById('entreprise-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Companies'; select.appendChild(allOption); companyList.forEach(company => { const option = document.createElement('option'); option.value = company; option.textContent = company; select.appendChild(option); }); }
         
-        function navigateToPr(pr) { const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; document.getElementById('material-search').value = ''; appState.materialSearch = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
+        function navigateToPr(pr) { deactivateDateView(); const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; document.getElementById('material-search').value = ''; appState.materialSearch = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
         
-        // --- Updated function to filter properties ---
         function displayFeatureInfo(feature) {
             const infobox = document.getElementById('infobox');
             const propertyIds = feature.getPropertyIds();
@@ -227,10 +256,13 @@
             for (let i = 0; i < propertyIds.length; i++) {
                 const propName = propertyIds[i];
                 const displayName = propName.replace('excelLayerInfo', '');
-
-                // Check if the cleaned property name is in our allowed list
+                
                 if (allowedProperties.includes(displayName.toUpperCase())) {
                     let propValue = feature.getProperty(propName);
+                    // --- FORMAT DATE_MS ---
+                    if (displayName.toUpperCase() === 'DATEMS' && propValue) {
+                        propValue = propValue.split(' ')[0];
+                    }
                     propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue;
                     content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`;
                 }
@@ -240,77 +272,45 @@
             infobox.style.display = 'block';
         }
         
-        function activateMeasurement() {
-            isMeasuring = true;
-            document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click to finish)';
-            document.getElementById('measure-btn').style.backgroundColor = '#00bcd4';
-            
-            measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-            let positions = [];
-            let totalDistance = 0;
-            let dynamicLine, distanceLabel;
-
-            measurementHandler.setInputAction(function (movement) {
-                if (positions.length === 0) return;
-                const cartesian = viewer.scene.pickPosition(movement.endPosition);
-                if (!Cesium.defined(cartesian)) return;
-                if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); }
-                const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian);
-                distanceLabel.position = cartesian;
-                distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`;
-            }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
-
-            measurementHandler.setInputAction(function (click) {
-                const cartesian = viewer.scene.pickPosition(click.position);
-                if (!Cesium.defined(cartesian)) return;
-                positions.push(cartesian);
-                if (positions.length > 1) {
-                    const lastPoint = positions[positions.length - 2];
-                    totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian);
-                    measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } });
-                }
-                measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } });
-                if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start measuring', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); }
-            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-            measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK);
-        }
-
-        function deactivateMeasurement() {
-            isMeasuring = false;
-            if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; }
-            measurementDataSource.entities.removeAll();
-            document.getElementById('measure-btn').textContent = 'Activate Measurement Tool';
-            document.getElementById('measure-btn').style.backgroundColor = '#444';
+        function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click to finish)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start measuring', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
+        function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#444'; }
+        
+        function deactivateDateView() {
+            appState.isDateViewActive = false;
+            const dateColorBtn = document.getElementById('date-color-btn');
+            dateColorBtn.textContent = 'Color by Date';
+            dateColorBtn.style.backgroundColor = '#444';
         }
 
         function setupEventListeners() {
             const measureBtn = document.getElementById('measure-btn');
+            const dateColorBtn = document.getElementById('date-color-btn');
             const selectionHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
 
-            const selectFeatureAction = function (movement) {
-                if (isMeasuring) return;
-                if (Cesium.defined(selectedFeature)) { selectedFeature.color = originalColor; selectedFeature = undefined; }
-                const pickedFeature = viewer.scene.pick(movement.position);
-                const infobox = document.getElementById('infobox');
-                if (pickedFeature instanceof Cesium.Cesium3DTileFeature) {
-                    selectedFeature = pickedFeature;
-                    Cesium.Color.clone(selectedFeature.color, originalColor);
-                    selectedFeature.color = highlightColor;
-                    displayFeatureInfo(pickedFeature);
-                } else { infobox.style.display = 'none'; }
-            };
+            const selectFeatureAction = function (movement) { if (isMeasuring) return; if (Cesium.defined(selectedFeature)) { selectedFeature.color = originalColor; selectedFeature = undefined; } const pickedFeature = viewer.scene.pick(movement.position); const infobox = document.getElementById('infobox'); if (pickedFeature instanceof Cesium.Cesium3DTileFeature) { selectedFeature = pickedFeature; Cesium.Color.clone(selectedFeature.color, originalColor); selectedFeature.color = highlightColor; displayFeatureInfo(pickedFeature); } else { infobox.style.display = 'none'; } };
             selectionHandler.setInputAction(selectFeatureAction, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-            measureBtn.addEventListener('click', () => { if (isMeasuring) { deactivateMeasurement(); } else { activateMeasurement(); } });
+            measureBtn.addEventListener('click', () => { if (isMeasuring) { deactivateMeasurement(); } else { deactivateDateView(); updateTilesetStyle(); activateMeasurement(); } });
+            dateColorBtn.addEventListener('click', () => {
+                appState.isDateViewActive = !appState.isDateViewActive;
+                if (appState.isDateViewActive) {
+                    dateColorBtn.textContent = 'Deactivate Date View';
+                    dateColorBtn.style.backgroundColor = '#00bcd4';
+                    deactivateMeasurement();
+                } else {
+                    deactivateDateView();
+                }
+                updateTilesetStyle();
+            });
+
             document.getElementById('basemap-picker').addEventListener('change', (event) => { const selectedBasemap = event.target.value; if (selectedBasemap === 'photorealistic') { if(photorealisticTileset) photorealisticTileset.show = true; defaultImageryLayer.show = false; viewer.scene.globe.baseColor = Cesium.Color.BLACK; } else { if(photorealisticTileset) photorealisticTileset.show = false; defaultImageryLayer.show = true; viewer.scene.globe.baseColor = Cesium.Color.TRANSPARENT; } });
-            document.getElementById('pr-search').addEventListener('input', () => { const value = document.getElementById('pr-search').value.toLowerCase(); const autocompleteResults = document.getElementById('autocomplete-results'); autocompleteResults.innerHTML = ''; if (!value) { appState.prSearch = ''; updateTilesetStyle(); return; } const filteredPRs = prList.filter(pr => pr.toLowerCase().startsWith(value)); filteredPRs.forEach(pr => { const item = document.createElement('div'); item.className = 'autocomplete-item'; item.textContent = pr; item.addEventListener('click', () => navigateToPr(pr)); autocompleteResults.appendChild(item); }); });
+            document.getElementById('pr-search').addEventListener('input', () => { deactivateDateView(); const value = document.getElementById('pr-search').value.toLowerCase(); const autocompleteResults = document.getElementById('autocomplete-results'); autocompleteResults.innerHTML = ''; if (!value) { appState.prSearch = ''; updateTilesetStyle(); return; } const filteredPRs = prList.filter(pr => pr.toLowerCase().startsWith(value)); filteredPRs.forEach(pr => { const item = document.createElement('div'); item.className = 'autocomplete-item'; item.textContent = pr; item.addEventListener('click', () => navigateToPr(pr)); autocompleteResults.appendChild(item); }); });
             document.getElementById('prev-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex > 0) { navigateToPr(prList[appState.currentPrIndex - 1]); } });
             document.getElementById('next-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex < prList.length - 1) { navigateToPr(prList[appState.currentPrIndex + 1]); } });
-            document.getElementById('material-filter').addEventListener('change', () => { appState.materialFilter = document.getElementById('material-filter').value; updateTilesetStyle(); });
-            document.getElementById('entreprise-filter').addEventListener('change', () => { appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
-            document.getElementById('material-search').addEventListener('input', () => { document.getElementById('pr-search').value = ''; document.getElementById('autocomplete-results').innerHTML = ''; appState.prSearch = ''; appState.materialSearch = document.getElementById('material-search').value; updateTilesetStyle(); });
-            document.getElementById('reset-btn').addEventListener('click', () => { document.getElementById('material-filter').value = ''; document.getElementById('entreprise-filter').value = ''; document.getElementById('material-search').value = ''; document.getElementById('pr-search').value = ''; document.getElementById('autocomplete-results').innerHTML = ''; appState.materialFilter = ''; appState.entrepriseFilter = ''; appState.materialSearch = ''; appState.prSearch = ''; appState.currentPrIndex = -1; myTileset.style = defaultStyle; viewer.zoomTo(myTileset); });
+            document.getElementById('material-filter').addEventListener('change', () => { deactivateDateView(); appState.materialFilter = document.getElementById('material-filter').value; updateTilesetStyle(); });
+            document.getElementById('entreprise-filter').addEventListener('change', () => { deactivateDateView(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
+            document.getElementById('material-search').addEventListener('input', () => { deactivateDateView(); document.getElementById('pr-search').value = ''; document.getElementById('autocomplete-results').innerHTML = ''; appState.prSearch = ''; appState.materialSearch = document.getElementById('material-search').value; updateTilesetStyle(); });
+            document.getElementById('reset-btn').addEventListener('click', () => { deactivateDateView(); document.getElementById('material-filter').value = ''; document.getElementById('entreprise-filter').value = ''; document.getElementById('material-search').value = ''; document.getElementById('pr-search').value = ''; document.getElementById('autocomplete-results').innerHTML = ''; appState.materialFilter = ''; appState.entrepriseFilter = ''; appState.materialSearch = ''; appState.prSearch = ''; appState.currentPrIndex = -1; myTileset.style = defaultStyle; viewer.zoomTo(myTileset); });
         }
         
         main();
