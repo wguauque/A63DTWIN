@@ -21,10 +21,10 @@
         #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; box-sizing: border-box; }
         #toolbar button { background-color: #444; cursor: pointer; text-align: left; }
 
-        .pr-search-container { position: relative; }
-        #autocomplete-results { position: absolute; top: 100%; left: 2px; right: 2px; background: #3a3a3a; border: 1px solid #777; border-top: none; border-radius: 0 0 4px 4px; z-index: 1002; max-height: 200px; overflow-y: auto; }
-        .autocomplete-item { padding: 8px; color: #fff; cursor: pointer; }
-        .autocomplete-item:hover { background-color: #555; }
+        .pr-search-container { display: flex; align-items: center; }
+        .pr-search-container input { flex-grow: 1; margin-right: 5px !important; }
+        .pr-search-container button { width: auto; flex-shrink: 0; text-align: center; }
+        
         #infobox { position: absolute; bottom: 20px; right: 20px; background: rgba(35, 35, 35, 0.9); color: white; padding: 12px; border-radius: 8px; display: none; max-width: 320px; border: 1px solid #666; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 1000; font-size: 0.9em; }
         #infobox h3 { margin-top: 0; padding-bottom: 5px; border-bottom: 1px solid #555; color: #00bcd4; }
         #infobox table { width: 100%; border-collapse: collapse; }
@@ -56,7 +56,7 @@
 
     <div id="headerLogos">
         <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
-        <img src="https://eelisa.eu/wp-content/uploads/2024/7/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
+        <img src="https://eelisa.eu/wp-content/uploads/2022/07/EELISA-logo-acronimo.png" alt="EELISA Logo" id="logoEelisa">
     </div>
 
     <div id="toolbar">
@@ -72,8 +72,8 @@
         
         <span class="toolbar-group-label">Navigate Highway (by PR)</span>
         <div class="pr-search-container">
-            <input type="text" id="pr-search" placeholder="Search PR (e.g., 98)">
-            <div id="autocomplete-results"></div>
+            <input type="text" id="pr-search" placeholder="e.g., 73">
+            <button id="pr-go-btn">Go</button>
         </div>
         <div id="navigation-controls" style="display: flex; justify-content: space-between; margin-top: 8px;">
             <button id="prev-pr-btn" style="width: 48%; text-align: center;">&lt; Prev PR</button>
@@ -123,22 +123,22 @@
 
     <script>
         const companyList = [ 'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER' ];
-        const prList = [];
-        for (let i = 34; i <= 140; i++) { prList.push(i.toString()); }
+        // MODIFICATION: Removed old static prList array
         const allowedProperties = ['TYPECOUCH', 'SURFACE', 'ENTREPRISE', 'PR1', 'NORDRE', 'CHANTIER', 'FOND', 'PR2', 'DATEMS'];
 
         const typeCouchMap = {
-            'Roulement':      { color: Cesium.Color.fromCssColorString('#4A4A4A'), label: 'Wearing Course' },
-            'Liaison':        { color: Cesium.Color.fromCssColorString('#6E6E6E'), label: 'Binding Course' },
-            'Base':           { color: Cesium.Color.fromCssColorString('#8B4513'), label: 'Base Course' },
-            'Arase':          { color: Cesium.Color.fromCssColorString('#B0C4DE'), label: 'Leveling Course' },
-            'Fondations':     { color: Cesium.Color.fromCssColorString('#A0522D'), label: 'Foundation' },
-            'Forme':          { color: Cesium.Color.fromCssColorString('#D2B48C'), label: 'Subgrade' },
+            'Roulement':     { color: Cesium.Color.fromCssColorString('#4A4A4A'), label: 'Wearing Course' },
+            'Liaison':       { color: Cesium.Color.fromCssColorString('#6E6E6E'), label: 'Binding Course' },
+            'Base':          { color: Cesium.Color.fromCssColorString('#8B4513'), label: 'Base Course' },
+            'Arase':         { color: Cesium.Color.fromCssColorString('#B0C4DE'), label: 'Leveling Course' },
+            'Fondations':    { color: Cesium.Color.fromCssColorString('#A0522D'), label: 'Foundation' },
+            'Forme':         { color: Cesium.Color.fromCssColorString('#D2B48C'), label: 'Subgrade' },
             'couche de forme':{ color: Cesium.Color.fromCssColorString('#D2B48C'), label: 'Subgrade' },
-            'blank':          { color: Cesium.Color.LIGHTSLATEGRAY, label: 'Not Specified' }
+            'blank':         { color: Cesium.Color.LIGHTSLATEGRAY, label: 'Not Specified' }
         };
 
-        let myTileset, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
+        // MODIFICATION: Added prTileset variable
+        let myTileset, prTileset, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
         let selectedFeature = undefined;
         let originalColor = new Cesium.Color();
         const highlightColor = Cesium.Color.AQUA;
@@ -151,7 +151,8 @@
         let originalGlobeShow = true;
         let originalPhotoTilesShow = false;
 
-        const appState = { entrepriseFilter: '', prSearch: '', currentPrIndex: -1, isDateViewActive: false, isTypeCouchViewActive: false };
+        // MODIFICATION: Updated appState for new PR logic
+        const appState = { entrepriseFilter: '', currentPrValue: null, isDateViewActive: false, isTypeCouchViewActive: false };
 
         function getMaterialColor(material) { const upperMaterial = material.toUpperCase(); if (upperMaterial.includes('BBSG') || upperMaterial.includes('BBTM') || upperMaterial.includes('BBME') || upperMaterial.includes('EME') || upperMaterial.includes('BBDR') || upperMaterial.includes('ACCOUSTIQ') || upperMaterial.includes('ACC')) { return Cesium.Color.DIMGRAY.toCssColorString(); } if (upperMaterial.includes('GB') || upperMaterial.includes('GNT')) { return Cesium.Color.GRAY.toCssColorString(); } if (upperMaterial.includes('SB') || upperMaterial.includes('GTLH') || upperMaterial.includes('FORME')) { return Cesium.Color.BURLYWOOD.toCssColorString(); } if (upperMaterial.includes('BET') || upperMaterial.includes('CBX')) { return Cesium.Color.LIGHTGRAY.toCssColorString(); } if (upperMaterial.includes('GEOTEXTILE')) { return Cesium.Color.WHITESMOKE.toCssColorString(); } if (upperMaterial.includes('ETANCH')) { return Cesium.Color.STEELBLUE.toCssColorString(); } return Cesium.Color.DIMGRAY.toCssColorString(); }
 
@@ -198,18 +199,37 @@
             }
             const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true';
 
-            let colorExpression;
-            if (appState.prSearch) {
-                colorExpression = `round(Number(\${excelLayerInfoPR1}) / 1000) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`;
-            } else {
-                colorExpression = defaultStyle.color.expression;
-            }
-            
-            myTileset.style = new Cesium.Cesium3DTileStyle({ show: showExpression, color: colorExpression });
+            // MODIFICATION: Removed PR highlighting logic from the main tileset
+            myTileset.style = new Cesium.Cesium3DTileStyle({
+                show: showExpression,
+                color: defaultStyle.color.expression
+            });
             viewer.scene.requestRender();
         }
 
-        function zoomToFeature(prValue) { if (!myTileset || !viewer || !prValue) return; const prNumber = Number(prValue); if (isNaN(prNumber)) return; const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}` }); myTileset.style = zoomStyle; setTimeout(async () => { try { await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500)); } catch (error) { console.error("Error during zoomTo operation:", error); } finally { updateTilesetStyle(); } }, 250); }
+        // MODIFICATION: New function to fly to a specific PR using the new tileset
+        function flyToPr(prValue) {
+            if (!prTileset || !viewer || prValue === null || prValue === '' || isNaN(prValue)) {
+                if(prTileset) prTileset.style = new Cesium.Cesium3DTileStyle({ show: false });
+                return;
+            }
+
+            appState.currentPrValue = Number(prValue);
+            document.getElementById('pr-search').value = appState.currentPrValue;
+
+            prTileset.style = new Cesium.Cesium3DTileStyle({
+                show: `\${dataLayer} / 1000 === ${appState.currentPrValue}`,
+                color: "color('magenta')" // Highlight the PR point
+            });
+
+            viewer.flyTo(prTileset, {
+                duration: 1.5,
+                offset: new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-60), 1000)
+            }).catch(error => {
+                console.error("Error during flyTo operation:", error);
+                prTileset.style = new Cesium.Cesium3DTileStyle({ show: false });
+            });
+        }
         
         function calculateCentroid(points) {
             let sum = new Cesium.Cartesian3(0, 0, 0);
@@ -241,6 +261,13 @@
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3694449); 
                 viewer.scene.primitives.add(myTileset);
                 await myTileset.readyPromise;
+
+                // MODIFICATION: Load the new asset for PR navigation
+                loadingOverlay.querySelector('h1').textContent = "Loading Navigation Data...";
+                prTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3694630);
+                viewer.scene.primitives.add(prTileset);
+                prTileset.style = new Cesium.Cesium3DTileStyle({ show: false }); // Initially hidden
+                await prTileset.readyPromise;
 
                 const heightOffset = 50.0;
                 const cartographic = Cesium.Cartographic.fromCartesian(myTileset.boundingSphere.center);
@@ -290,8 +317,8 @@
             }
         }
         
-        function navigateToPr(pr) { clearClippingPlanes(); deactivateAllModes(); const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
-        
+        // MODIFICATION: Removed old 'navigateToPr' function
+
         function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; const displayName = propName.replace('excelLayerInfo', ''); if (allowedProperties.includes(displayName.toUpperCase())) { let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
         
         function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
@@ -419,21 +446,47 @@
             document.getElementById('clear-clips-btn').addEventListener('click', clearClippingPlanes);
 
             document.getElementById('basemap-picker').addEventListener('change', (event) => { const selectedBasemap = event.target.value; if (selectedBasemap === 'photorealistic') { if(photorealisticTileset) photorealisticTileset.show = true; defaultImageryLayer.show = false; viewer.scene.globe.baseColor = Cesium.Color.BLACK; originalPhotoTilesShow = true; } else { if(photorealisticTileset) photorealisticTileset.show = false; defaultImageryLayer.show = true; viewer.scene.globe.baseColor = Cesium.Color.TRANSPARENT; originalPhotoTilesShow = false; } viewer.scene.requestRender(); });
-            document.getElementById('pr-search').addEventListener('input', () => { clearClippingPlanes(); deactivateAllModes(); const value = document.getElementById('pr-search').value.toLowerCase(); const autocompleteResults = document.getElementById('autocomplete-results'); autocompleteResults.innerHTML = ''; if (!value) { appState.prSearch = ''; updateTilesetStyle(); return; } const filteredPRs = prList.filter(pr => pr.toLowerCase().startsWith(value)); filteredPRs.forEach(pr => { const item = document.createElement('div'); item.className = 'autocomplete-item'; item.textContent = pr; item.addEventListener('click', () => navigateToPr(pr)); autocompleteResults.appendChild(item); }); });
-            document.getElementById('prev-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex > 0) { navigateToPr(prList[appState.currentPrIndex - 1]); } });
-            document.getElementById('next-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex < prList.length - 1) { navigateToPr(prList[appState.currentPrIndex + 1]); } });
+            
+            // MODIFICATION: Replaced old PR search logic with new event listeners
+            const handlePrSearch = () => {
+                deactivateAllModes();
+                clearClippingPlanes();
+                const prValue = document.getElementById('pr-search').value;
+                flyToPr(prValue);
+            };
+
+            document.getElementById('pr-go-btn').addEventListener('click', handlePrSearch);
+            document.getElementById('pr-search').addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    handlePrSearch();
+                }
+            });
+
+            document.getElementById('prev-pr-btn').addEventListener('click', () => {
+                if (appState.currentPrValue !== null && appState.currentPrValue > 1) { // Assuming PRs start > 0
+                    flyToPr(appState.currentPrValue - 1);
+                }
+            });
+            document.getElementById('next-pr-btn').addEventListener('click', () => {
+                if (appState.currentPrValue !== null) {
+                    flyToPr(appState.currentPrValue + 1);
+                }
+            });
+            
             document.getElementById('entreprise-filter').addEventListener('change', () => { clearClippingPlanes(); deactivateAllModes(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
             
+            // MODIFICATION: Updated reset button logic
             document.getElementById('reset-btn').addEventListener('click', () => { 
                 deactivateMeasurement(); 
                 clearClippingPlanes();
                 deactivateAllModes();
                 document.getElementById('entreprise-filter').value = ''; 
                 document.getElementById('pr-search').value = ''; 
-                document.getElementById('autocomplete-results').innerHTML = ''; 
                 appState.entrepriseFilter = ''; 
-                appState.prSearch = ''; 
-                appState.currentPrIndex = -1; 
+                appState.currentPrValue = null; 
+                if (prTileset) {
+                    prTileset.style = new Cesium.Cesium3DTileStyle({ show: false });
+                }
                 myTileset.style = defaultStyle; 
                 viewer.zoomTo(myTileset); 
             });
