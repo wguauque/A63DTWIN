@@ -128,25 +128,26 @@
             return Cesium.Color.DIMGRAY.toCssColorString();
         }
 
+        // --- FIXED FUNCTION TO USE NUMERIC YEAR COMPARISON ---
         function applyDateStyle() {
             if (!myTileset) return;
 
             const now = new Date();
-            const date15 = new Date(new Date().setFullYear(now.getFullYear() - 15));
-            const date30 = new Date(new Date().setFullYear(now.getFullYear() - 30));
+            const year15Ago = now.getFullYear() - 15;
+            const year30Ago = now.getFullYear() - 30;
 
-            const date15Str = date15.toISOString().split('T')[0];
-            const date30Str = date30.toISOString().split('T')[0];
-
-            const dateProperty = '${excelLayerInfoDATEMS}'; 
+            // This expression uses a regular expression to extract the 4-digit year 
+            // from the start of the date string and converts it to a number.
+            const yearExpression = "Number(regExp('^([0-9]{4})').exec(String(${excelLayerInfoDATEMS}))[1])";
 
             myTileset.style = new Cesium.Cesium3DTileStyle({
                 color: {
                     conditions: [
-                        [`String(${dateProperty}) < '${date30Str}'`, "color('red')"],
-                        [`String(${dateProperty}) >= '${date30Str}' && String(${dateProperty}) < '${date15Str}'`, "color('yellow')"],
-                        [`String(${dateProperty}) >= '${date15Str}'`, "color('lime')"],
-                        ['true', "color('gray')"]
+                        // Now we compare the extracted year as a number
+                        [`${yearExpression} < ${year30Ago}`, "color('red')"],
+                        [`${yearExpression} >= ${year30Ago} && ${yearExpression} < ${year15Ago}`, "color('yellow')"],
+                        [`${yearExpression} >= ${year15Ago}`, "color('lime')"],
+                        ['true', "color('gray')"] // Default for features with an invalid date format
                     ]
                 }
             });
@@ -212,7 +213,6 @@
                 viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(3693677);
 
                 loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
-                // --- UPDATED ASSET ID ---
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3694449);
                 viewer.scene.primitives.add(myTileset);
                 await myTileset.readyPromise;
@@ -259,7 +259,6 @@
                 
                 if (allowedProperties.includes(displayName.toUpperCase())) {
                     let propValue = feature.getProperty(propName);
-                    // --- FORMAT DATE_MS ---
                     if (displayName.toUpperCase() === 'DATEMS' && propValue) {
                         propValue = propValue.split(' ')[0];
                     }
