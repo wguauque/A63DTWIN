@@ -56,7 +56,7 @@
 
     <div id="headerLogos">
         <img src="atlandes.jpg" alt="Atlandes Logo" id="logoAtlandes">
-        <img src="https://eelisa.eu/wp-content/uploads/2024/07/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
+        <img src="https://eelisa.eu/wp-content/uploads/2024/7/logo-digital-twins-positive-vertical-color-252x300.png" alt="EELISA Logo" id="logoEelisa">
     </div>
 
     <div id="toolbar">
@@ -160,7 +160,6 @@
 
         function zoomToFeature(prValue) { if (!myTileset || !viewer || !prValue) return; const prNumber = Number(prValue); if (isNaN(prNumber)) return; const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}` }); myTileset.style = zoomStyle; setTimeout(async () => { try { await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500)); } catch (error) { console.error("Error during zoomTo operation:", error); } finally { updateTilesetStyle(); } }, 250); }
         
-        // NEW: Helper function to calculate the center of the drawn points.
         function calculateCentroid(points) {
             let sum = new Cesium.Cartesian3(0, 0, 0);
             points.forEach(p => {
@@ -188,7 +187,7 @@
                 viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(3693677);
 
                 loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
-                myTileset = await Cesium.Cesium3DTileSet.fromIonAssetId(3694449);
+                myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3694449); // Corrected this line
                 viewer.scene.primitives.add(myTileset);
                 await myTileset.readyPromise;
 
@@ -230,7 +229,6 @@
         function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
         function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#444'; viewer.scene.requestRender(); }
         
-        // MODIFIED: This function only sets up the drawing interaction.
         function activateClippingTool() {
             isClipping = true;
             const clipBtn = document.getElementById('clip-btn');
@@ -265,10 +263,8 @@
                 }
             }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
             
-            // MODIFIED: Right-click now finalizes the shape AND enters inspection mode.
             clippingHandler.setInputAction(function() {
                 if (points.length >= 3) {
-                    // Activate Inspection Mode visuals
                     const notification = document.getElementById('mode-notification');
                     notification.style.display = 'block';
                     setTimeout(() => { notification.style.opacity = '1'; }, 10);
@@ -284,8 +280,7 @@
                         photorealisticTileset.show = false;
                     }
 
-                    // NEW: Create an offset polygon for a cleaner cut.
-                    const offsetDistance = 5.0; // 5 meters
+                    const offsetDistance = 5.0; 
                     const centroid = calculateCentroid(points);
                     const offsetPoints = points.map(p => {
                         const direction = Cesium.Cartesian3.subtract(p, centroid, new Cesium.Cartesian3());
@@ -296,7 +291,7 @@
 
                     const newClippingPolygon = new Cesium.ClippingPolygon({
                         positions: offsetPoints,
-                        inverse: true // Hides geometry OUTSIDE the polygon
+                        inverse: true 
                     });
                     myTileset.clippingPolygons.add(newClippingPolygon);
                 }
@@ -304,7 +299,6 @@
             }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
         }
 
-        // RENAMED: This function now ONLY deactivates the drawing handler.
         function deactivateClippingDrawing() {
             isClipping = false;
             if (clippingHandler) {
@@ -318,7 +312,6 @@
             viewer.scene.requestRender();
         }
 
-        // MODIFIED: This is the main exit point for inspection mode.
         function clearClippingPlanes() {
             if (isClipping) deactivateClippingDrawing();
             if (myTileset && myTileset.clippingPolygons) {
@@ -328,7 +321,7 @@
             if (photorealisticTileset) {
                 photorealisticTileset.show = originalPhotoTilesShow;
             }
-            deactivateDateView(); // This also triggers a style update and render
+            deactivateDateView(); 
         }
         
         function deactivateDateView() { appState.isDateViewActive = false; document.getElementById('date-ramp-banner').style.display = 'none'; updateTilesetStyle(); }
@@ -353,7 +346,6 @@
             document.getElementById('entreprise-filter').addEventListener('change', () => { clearClippingPlanes(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
             document.getElementById('material-search').addEventListener('input', () => { clearClippingPlanes(); document.getElementById('pr-search').value = ''; document.getElementById('autocomplete-results').innerHTML = ''; appState.prSearch = ''; appState.materialSearch = document.getElementById('material-search').value; updateTilesetStyle(); });
             
-            // IMPROVED: Reset button now provides a more comprehensive cleanup.
             document.getElementById('reset-btn').addEventListener('click', () => { 
                 deactivateMeasurement(); 
                 clearClippingPlanes();
@@ -376,3 +368,4 @@
     </script>
 </body>
 </html>
+
