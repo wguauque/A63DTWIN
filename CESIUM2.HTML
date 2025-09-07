@@ -122,24 +122,23 @@
 
 
     <script>
-        const companyList = [ 'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER' ];
+        const companyList = [ 'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER' ];
         const prList = [];
-        // New PR range based on dataLayer property (35000 to 138000)
-        for (let i = 35; i <= 138; i++) { prList.push(i.toString()); }
-        const allowedProperties = ['TYPECOUCH', 'SURFACE', 'ENTREPRISE', 'PR1', 'NORDRE', 'CHANTIER', 'FOND', 'PR2', 'DATEMS', 'DATALAYER'];
+        for (let i = 34; i <= 140; i++) { prList.push(i.toString()); }
+        const allowedProperties = ['TYPECOUCH', 'SURFACE', 'ENTREPRISE', 'PR1', 'NORDRE', 'CHANTIER', 'FOND', 'PR2', 'DATEMS'];
 
         const typeCouchMap = {
-            'Roulement':     { color: Cesium.Color.fromCssColorString('#4A4A4A'), label: 'Wearing Course' },
-            'Liaison':       { color: Cesium.Color.fromCssColorString('#6E6E6E'), label: 'Binding Course' },
-            'Base':          { color: Cesium.Color.fromCssColorString('#8B4513'), label: 'Base Course' },
-            'Arase':         { color: Cesium.Color.fromCssColorString('#B0C4DE'), label: 'Leveling Course' },
-            'Fondations':    { color: Cesium.Color.fromCssColorString('#A0522D'), label: 'Foundation' },
-            'Forme':         { color: Cesium.Color.fromCssColorString('#D2B48C'), label: 'Subgrade' },
+            'Roulement':      { color: Cesium.Color.fromCssColorString('#4A4A4A'), label: 'Wearing Course' },
+            'Liaison':        { color: Cesium.Color.fromCssColorString('#6E6E6E'), label: 'Binding Course' },
+            'Base':           { color: Cesium.Color.fromCssColorString('#8B4513'), label: 'Base Course' },
+            'Arase':          { color: Cesium.Color.fromCssColorString('#B0C4DE'), label: 'Leveling Course' },
+            'Fondations':     { color: Cesium.Color.fromCssColorString('#A0522D'), label: 'Foundation' },
+            'Forme':          { color: Cesium.Color.fromCssColorString('#D2B48C'), label: 'Subgrade' },
             'couche de forme':{ color: Cesium.Color.fromCssColorString('#D2B48C'), label: 'Subgrade' },
-            'blank':         { color: Cesium.Color.LIGHTSLATEGRAY, label: 'Not Specified' }
+            'blank':          { color: Cesium.Color.LIGHTSLATEGRAY, label: 'Not Specified' }
         };
 
-        let myTileset, pylonsTileset, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
+        let myTileset, myTileset2, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
         let selectedFeature = undefined;
         let originalColor = new Cesium.Color();
         const highlightColor = Cesium.Color.AQUA;
@@ -158,7 +157,7 @@
 
         function applyDateStyle() {
             if (!myTileset) return;
-            myTileset.style = new Cesium.Cesium3DTileStyle({
+            const style = new Cesium.Cesium3DTileStyle({
                 color: {
                     conditions: [
                         ["regExp('^202').test(String(${excelLayerInfoDATEMS}))", "color('green')"],
@@ -169,6 +168,8 @@
                     ]
                 }
             });
+            myTileset.style = style;
+            if (myTileset2) myTileset2.style = style;
             viewer.scene.requestRender();
         }
 
@@ -183,7 +184,9 @@
                 }
             });
             conditions.push(["true", "color('white')"]); // Fallback for any other value
-            myTileset.style = new Cesium.Cesium3DTileStyle({ color: { conditions: conditions } });
+            const style = new Cesium.Cesium3DTileStyle({ color: { conditions: conditions } });
+            myTileset.style = style;
+            if (myTileset2) myTileset2.style = style;
             viewer.scene.requestRender();
         }
 
@@ -201,34 +204,18 @@
 
             let colorExpression;
             if (appState.prSearch) {
-                // New logic: Use 'dataLayer' property and multiply search term by 1000
-                const prValue = Number(appState.prSearch) * 1000;
-                colorExpression = `Number(\${dataLayer}) === ${prValue} ? color('magenta') : defaultStyle.color.expression`;
+                colorExpression = `round(Number(\${excelLayerInfoPR1}) / 1000) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`;
             } else {
                 colorExpression = defaultStyle.color.expression;
             }
             
-            myTileset.style = new Cesium.Cesium3DTileStyle({ show: showExpression, color: colorExpression });
+            const style = new Cesium.Cesium3DTileStyle({ show: showExpression, color: colorExpression });
+            myTileset.style = style;
+            if (myTileset2) myTileset2.style = style;
             viewer.scene.requestRender();
         }
 
-        function zoomToFeature(prValue) { 
-            if (!myTileset || !viewer || !prValue) return; 
-            const prNumber = Number(prValue); 
-            if (isNaN(prNumber)) return; 
-            // New logic: Use 'dataLayer' property and multiply the PR number by 1000 to find the correct feature
-            const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `Number(\${dataLayer}) === ${prNumber * 1000}` }); 
-            myTileset.style = zoomStyle; 
-            setTimeout(async () => { 
-                try { 
-                    await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500)); 
-                } catch (error) { 
-                    console.error("Error during zoomTo operation:", error); 
-                } finally { 
-                    updateTilesetStyle(); 
-                } 
-            }, 250); 
-        }
+        function zoomToFeature(prValue) { if (!myTileset || !viewer || !prValue) return; const prNumber = Number(prValue); if (isNaN(prNumber)) return; const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}` }); myTileset.style = zoomStyle; if(myTileset2) myTileset2.style = zoomStyle; setTimeout(async () => { try { await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500)); } catch (error) { console.error("Error during zoomTo operation:", error); } finally { updateTilesetStyle(); } }, 250); }
         
         function calculateCentroid(points) {
             let sum = new Cesium.Cartesian3(0, 0, 0);
@@ -256,16 +243,12 @@
                 loadingOverlay.querySelector('h1').textContent = "Loading Terrain...";
                 viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(3693677);
 
-                loadingOverlay.querySelector('h1').textContent = "Loading 3D Models...";
-                // Load main road tileset
+                loadingOverlay.querySelector('h1').textContent = "Loading 3D Model...";
                 myTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3694449); 
+                myTileset2 = await Cesium.Cesium3DTileset.fromIonAssetId(3694630);
                 viewer.scene.primitives.add(myTileset);
-                
-                // Load the new pylons tileset
-                pylonsTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3694630);
-                viewer.scene.primitives.add(pylonsTileset);
-                
-                await Promise.all([myTileset.readyPromise, pylonsTileset.readyPromise]);
+                viewer.scene.primitives.add(myTileset2);
+                await Promise.all([myTileset.readyPromise, myTileset2.readyPromise]);
 
                 const heightOffset = 50.0;
                 const cartographic = Cesium.Cartographic.fromCartesian(myTileset.boundingSphere.center);
@@ -273,17 +256,22 @@
                 const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, heightOffset);
                 const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
                 const modelMatrix = Cesium.Matrix4.fromTranslation(translation);
-
-                // Apply the same transformation to both tilesets
                 myTileset.modelMatrix = modelMatrix;
-                pylonsTileset.modelMatrix = modelMatrix;
+                myTileset2.modelMatrix = modelMatrix;
 
+                const colorConditions = [
+                    ["${name_1}", `color('${getMaterialColor("${name_1}")}')`],
+                    [true, "color('white')"]
+                ];
                 defaultStyle = new Cesium.Cesium3DTileStyle({
                     color: "color('DIMGRAY')" // A simple default color
                 });
                 myTileset.style = defaultStyle;
+                myTileset2.style = defaultStyle;
 
-                myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({ edgeWidth: 1.0, edgeColor: Cesium.Color.WHITE });
+                const clippingPolygons = new Cesium.ClippingPolygonCollection({ edgeWidth: 1.0, edgeColor: Cesium.Color.WHITE });
+                myTileset.clippingPolygons = clippingPolygons;
+                myTileset2.clippingPolygons = clippingPolygons;
 
                 measurementDataSource = new Cesium.CustomDataSource('measurementDataSource');
                 viewer.dataSources.add(measurementDataSource);
@@ -295,7 +283,7 @@
                 setupEventListeners();
 
                 loadingOverlay.querySelector('h1').textContent = "Positioning Camera...";
-                await viewer.zoomTo(myTileset);
+                await viewer.zoomTo([myTileset, myTileset2]);
                 loadingOverlay.style.opacity = '0';
                 setTimeout(() => { loadingOverlay.style.display = 'none'; }, 500);
             } catch (error) { console.error("Critical error during Cesium setup:", error); loadingOverlay.querySelector('h1').textContent = `Application Error: ${error.message}`; }
@@ -306,18 +294,25 @@
         function buildTypeCouchLegendUI() {
             const legendContainer = document.getElementById('typecouch-ramp-legend');
             legendContainer.innerHTML = '';
+            // Using a Set to avoid duplicate labels
+            const uniqueLabels = new Map();
             for (const key in typeCouchMap) {
                 const item = typeCouchMap[key];
+                if (!uniqueLabels.has(item.label)) {
+                    uniqueLabels.set(item.label, item.color);
+                }
+            }
+            uniqueLabels.forEach((color, label) => {
                 const legendItem = document.createElement('div');
                 legendItem.className = 'legend-item';
-                legendItem.innerHTML = `<span class="color-box" style="background-color: ${item.color.toCssColorString()};"></span> ${item.label}`;
+                legendItem.innerHTML = `<span class="color-box" style="background-color: ${color.toCssColorString()};"></span> ${label}`;
                 legendContainer.appendChild(legendItem);
-            }
+            });
         }
         
         function navigateToPr(pr) { clearClippingPlanes(); deactivateAllModes(); const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
         
-        function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; let displayName = propName; if (displayName.startsWith('excelLayerInfo')) { displayName = displayName.replace('excelLayerInfo', ''); } if (allowedProperties.includes(displayName.toUpperCase()) || displayName.toUpperCase() === 'DATALAYER') { let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
+        function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; const displayName = propName.replace('excelLayerInfo', ''); if (allowedProperties.includes(displayName.toUpperCase())) { let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
         
         function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
         function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#444'; viewer.scene.requestRender(); }
@@ -459,12 +454,4 @@
                 appState.entrepriseFilter = ''; 
                 appState.prSearch = ''; 
                 appState.currentPrIndex = -1; 
-                myTileset.style = defaultStyle; 
-                viewer.zoomTo(myTileset); 
-            });
-        }
-        
-        main();
-    </script>
-</body>
-</html>
+                myTileset
