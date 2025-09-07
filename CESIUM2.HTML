@@ -31,6 +31,7 @@
         #infobox th, #infobox td { padding: 5px 2px; text-align: left; }
         #infobox th { font-weight: bold; color: #ccc; width: 40%; }
         
+        /* --- New styles for Date Ramp Banner --- */
         #date-ramp-banner {
             position: absolute;
             bottom: 20px;
@@ -136,8 +137,6 @@
         
         let isClipping = false;
         let clippingDataSource, clippingHandler;
-        // NEW: Variable to store the original zoom distance
-        let originalMinZoom = 100.0;
 
         const appState = { materialFilter: '', entrepriseFilter: '', materialSearch: '', prSearch: '', currentPrIndex: -1, isDateViewActive: false };
 
@@ -145,7 +144,6 @@
 
         function applyDateStyle() {
             if (!myTileset) return;
-            appState.isDateViewActive = true;
             myTileset.style = new Cesium.Cesium3DTileStyle({
                 color: {
                     conditions: [
@@ -171,7 +169,7 @@
                 viewer.scene.globe.enableLighting = true;
                 viewer.scene.fog.enabled = true;
                 viewer.scene.fog.density = 0.0002;
-                originalMinZoom = viewer.scene.screenSpaceCameraController.minimumZoomDistance; // Store original zoom
+                viewer.scene.screenSpaceCameraController.minimumZoomDistance = 100;
                 
                 defaultImageryLayer = viewer.scene.imageryLayers.addImageryProvider(await Cesium.createWorldImageryAsync());
                 
@@ -198,11 +196,10 @@
                 defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
                 myTileset.style = defaultStyle;
 
-                // MODIFIED: Initialize with inverse clipping enabled
+                // **CHANGE 1: Initialize the ClippingPolygonCollection**
                 myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
                     edgeWidth: 1.0,
                     edgeColor: Cesium.Color.WHITE,
-                    inverse: true, // Clip everything OUTSIDE the polygon
                 });
 
                 measurementDataSource = new Cesium.CustomDataSource('measurementDataSource');
@@ -229,45 +226,45 @@
         function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click to finish)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start measuring', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
         function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#444'; }
         
-        // MODIFIED: Clipping tool now uses accurate picking and enters "Inspection Mode"
+        // **CHANGE 2: Replace the clipping tool logic entirely**
         function activateClippingTool() {
             isClipping = true;
             const clipBtn = document.getElementById('clip-btn');
             clipBtn.textContent = 'Drawing... (Right-click to finish)';
             clipBtn.style.backgroundColor = '#00bcd4';
-            
-            // NEW: Enter inspection-ready state
-            viewer.scene.screenSpaceCameraController.minimumZoomDistance = 1.0; // Allow closer zoom
-            viewer.scene.globe.baseColor = new Cesium.Color(0.1, 0.1, 0.1, 1.0); // Fade background
-
             clippingHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
             let points = [];
             let polygonEntity = null;
 
-            const getPositionOnModel = (screenPosition) => {
-                const pickedObject = viewer.scene.pick(screenPosition);
-                if (Cesium.defined(pickedObject) && (pickedObject.primitive === myTileset || pickedObject.tileset === myTileset)) {
-                    return viewer.scene.pickPosition(screenPosition);
-                }
-                return null;
-            };
-
+            // Capture left clicks to add points to the polygon
             clippingHandler.setInputAction(function(click) {
-                const cartesian = getPositionOnModel(click.position);
+                const cartesian = viewer.scene.pickPosition(click.position);
                 if (Cesium.defined(cartesian)) {
                     points.push(cartesian);
-                    clippingDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.WHITE } });
+                    // Add a visual point marker
+                    clippingDataSource.entities.add({
+                        position: cartesian,
+                        point: { pixelSize: 8, color: Cesium.Color.WHITE }
+                    });
                 }
             }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
+            // Update the polygon preview as the mouse moves
             clippingHandler.setInputAction(function(movement) {
-                if (points.length < 1) return;
-                const cartesian = getPositionOnModel(movement.endPosition);
+                if (points.length < 1) {
+                    return;
+                }
+                const cartesian = viewer.scene.pickPosition(movement.endPosition);
                 if (Cesium.defined(cartesian)) {
+                    // Create the preview polygon entity if it doesn't exist
                     if (polygonEntity === null) {
                         polygonEntity = clippingDataSource.entities.add({
                             polygon: {
-                                hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(points.concat(cartesian)), false),
+                                // Use a callback to dynamically update the polygon hierarchy
+                                hierarchy: new Cesium.CallbackProperty(() => {
+                                    // The hierarchy is the list of fixed points plus the current mouse position
+                                    return new Cesium.PolygonHierarchy(points.concat(cartesian));
+                                }, false),
                                 material: Cesium.Color.WHITE.withAlpha(0.3),
                                 outline: true,
                                 outlineColor: Cesium.Color.WHITE
@@ -277,24 +274,22 @@
                 }
             }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
+            // Finalize the polygon and apply the clip on right-click
             clippingHandler.setInputAction(function() {
                 if (points.length >= 3) {
-                    const newClippingPolygon = new Cesium.ClippingPolygon({ positions: points });
-                    myTileset.clippingPolygons.add(newClippingPolygon);
-
-                    // NEW: Fly camera to focus on the clipped area
-                    const boundingSphere = Cesium.BoundingSphere.fromPoints(points);
-                    viewer.camera.flyToBoundingSphere(boundingSphere, {
-                        duration: 1.5,
-                        offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-60), boundingSphere.radius * 2.5)
+                    // Create the final clipping polygon from the collected points
+                    const newClippingPolygon = new Cesium.ClippingPolygon({
+                        positions: points,
                     });
+                    // Add the new polygon to the tileset's collection to activate the clip
+                    myTileset.clippingPolygons.add(newClippingPolygon);
                 }
-                deactivateClippingTool(false); // Deactivate drawing but keep inspection mode active
+                // End the drawing process
+                deactivateClippingTool();
             }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
         }
-        
-        // MODIFIED: Deactivation logic now distinguishes between canceling and finishing
-        function deactivateClippingTool(fullReset = true) {
+
+        function deactivateClippingTool() {
             isClipping = false;
             if (clippingHandler) {
                 clippingHandler.destroy();
@@ -304,30 +299,16 @@
             const clipBtn = document.getElementById('clip-btn');
             clipBtn.textContent = 'Activate Clipping Tool';
             clipBtn.style.backgroundColor = '#444';
-
-            if (fullReset) {
-                // NEW: Restore normal view state only when clearing clips
-                viewer.scene.screenSpaceCameraController.minimumZoomDistance = originalMinZoom;
-                viewer.scene.globe.baseColor = Cesium.Color.TRANSPARENT;
-                deactivateDateView();
-            }
         }
-        
-        // MODIFIED: This is now the "Exit Inspection Mode" function
+
+        // **CHANGE 3: Update the function to clear clipping polygons**
         function clearClippingPlanes() {
             if (myTileset && myTileset.clippingPolygons) {
                 myTileset.clippingPolygons.removeAll();
             }
-            deactivateClippingTool(true); // Perform a full reset of the view
         }
         
-        function deactivateDateView() {
-             appState.isDateViewActive = false;
-             document.getElementById('date-ramp-banner').style.display = 'none';
-             if (myTileset && defaultStyle) {
-                myTileset.style = defaultStyle; // Revert to default material colors
-             }
-        }
+        function deactivateDateView() { appState.isDateViewActive = false; document.getElementById('date-ramp-banner').style.display = 'none'; updateTilesetStyle(); }
 
         function setupEventListeners() {
             const measureBtn = document.getElementById('measure-btn');
@@ -341,22 +322,12 @@
             const selectFeatureAction = function (movement) { if (isMeasuring || isClipping) return; if (Cesium.defined(selectedFeature)) { selectedFeature.color = originalColor; selectedFeature = undefined; } const pickedFeature = viewer.scene.pick(movement.position); const infobox = document.getElementById('infobox'); if (pickedFeature instanceof Cesium.Cesium3DTileFeature) { selectedFeature = pickedFeature; Cesium.Color.clone(selectedFeature.color, originalColor); selectedFeature.color = highlightColor; displayFeatureInfo(pickedFeature); } else { infobox.style.display = 'none'; } };
             selectionHandler.setInputAction(selectFeatureAction, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-            measureBtn.addEventListener('click', () => { if (isMeasuring) { deactivateMeasurement(); } else { clearClippingPlanes(); deactivateDateView(); activateMeasurement(); } });
+            measureBtn.addEventListener('click', () => { if (isMeasuring) { deactivateMeasurement(); } else { deactivateDateView(); deactivateClippingTool(); updateTilesetStyle(); activateMeasurement(); } });
             showDateRampBtn.addEventListener('click', () => { document.getElementById('date-ramp-banner').style.display = 'flex'; });
-            applyDateRampBtn.addEventListener('click', () => { clearClippingPlanes(); deactivateMeasurement(); applyDateStyle(); });
+            applyDateRampBtn.addEventListener('click', () => { appState.isDateViewActive = true; deactivateMeasurement(); deactivateClippingTool(); updateTilesetStyle(); });
             closeDateRampBtn.addEventListener('click', () => { deactivateDateView(); });
 
-            // MODIFIED: Clipping button now also activates the date ramp view
-            clipBtn.addEventListener('click', () => {
-                if (isClipping) {
-                    deactivateClippingTool(true);
-                } else {
-                    deactivateMeasurement();
-                    applyDateStyle(); // Apply date colors
-                    document.getElementById('date-ramp-banner').style.display = 'flex'; // Show legend
-                    activateClippingTool();
-                }
-            });
+            clipBtn.addEventListener('click', () => { if (isClipping) { deactivateClippingTool(); } else { deactivateDateView(); deactivateMeasurement(); updateTilesetStyle(); activateClippingTool(); } });
             clearClipsBtn.addEventListener('click', clearClippingPlanes);
 
             document.getElementById('basemap-picker').addEventListener('change', (event) => { const selectedBasemap = event.target.value; if (selectedBasemap === 'photorealistic') { if(photorealisticTileset) photorealisticTileset.show = true; defaultImageryLayer.show = false; viewer.scene.globe.baseColor = Cesium.Color.BLACK; } else { if(photorealisticTileset) photorealisticTileset.show = false; defaultImageryLayer.show = true; viewer.scene.globe.baseColor = Cesium.Color.TRANSPARENT; } });
