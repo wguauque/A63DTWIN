@@ -103,21 +103,26 @@
 
         function getMaterialColor(material) { const upperMaterial = material.toUpperCase(); if (upperMaterial.includes('BBSG') || upperMaterial.includes('BBTM') || upperMaterial.includes('BBME') || upperMaterial.includes('EME') || upperMaterial.includes('BBDR') || upperMaterial.includes('ACCOUSTIQ') || upperMaterial.includes('ACC')) { return Cesium.Color.DARKSLATEGRAY.toCssColorString(); } if (upperMaterial.includes('GB') || upperMaterial.includes('GNT')) { return Cesium.Color.GRAY.toCssColorString(); } if (upperMaterial.includes('SB') || upperMaterial.includes('GTLH') || upperMaterial.includes('FORME')) { return Cesium.Color.BURLYWOOD.toCssColorString(); } if (upperMaterial.includes('BET') || upperMaterial.includes('CBX')) { return Cesium.Color.LIGHTGRAY.toCssColorString(); } if (upperMaterial.includes('GEOTEXTILE')) { return Cesium.Color.WHITESMOKE.toCssColorString(); } if (upperMaterial.includes('ETANCH')) { return Cesium.Color.STEELBLUE.toCssColorString(); } return Cesium.Color.DIMGRAY.toCssColorString(); }
 
+        // --- NEW, ROBUST DATE STYLING ---
         function applyDateStyle() {
             if (!myTileset) return;
-            const now = new Date();
-            const year15Ago = now.getFullYear() - 15;
-            const year30Ago = now.getFullYear() - 30;
+            const currentYear = new Date().getFullYear();
+            const year15Ago = currentYear - 15;
+            const year30Ago = currentYear - 30;
 
-            const yearExpression = "Number(regExp('^([0-9]{4})').exec(String(${excelLayerInfoDATEMS}))[1])";
-
+            // This simplified approach uses string matching, which is more reliable.
+            // It checks if the DATEMS property string starts with a given year prefix.
+            // Example: A date of "2013-..." will match "regExp('^201')".
             myTileset.style = new Cesium.Cesium3DTileStyle({
                 color: {
                     conditions: [
-                        [`!regExp('^([0-9]{4})').test(String(\${excelLayerInfoDATEMS}))`, "color('gray')"], // More robust check for invalid format
-                        [`${yearExpression} < ${year30Ago}`, "color('red')"],
-                        [`${yearExpression} >= ${year30Ago} && ${yearExpression} < ${year15Ago}`, "color('yellow')"],
-                        [`${yearExpression} >= ${year15Ago}`, "color('lime')"],
+                        // Check for recent dates (e.g., 2011-2025+)
+                        [`regExp('^${year15Ago.toString().substring(0,3)}').test(\${excelLayerInfoDATEMS}) && Number(regExp('^([0-9]{4})').exec(String(\${excelLayerInfoDATEMS}))[1]) >= ${year15Ago}`, "color('lime')"],
+                        // Check for medium-aged dates (e.g., 1995-2010)
+                        [`(regExp('^199[5-9]').test(\${excelLayerInfoDATEMS}) || regExp('^200').test(\${excelLayerInfoDATEMS}) || (regExp('^2010').test(\${excelLayerInfoDATEMS}) && Number(regExp('^([0-9]{4})').exec(String(\${excelLayerInfoDATEMS}))[1]) < ${year15Ago}))`, "color('yellow')"],
+                        // Anything older is red
+                        [`Number(regExp('^([0-9]{4})').exec(String(\${excelLayerInfoDATEMS}))[1]) < ${year30Ago}`, "color('red')"],
+                        // Fallback for invalid/null dates
                         ['true', "color('gray')"]
                     ]
                 }
@@ -187,7 +192,74 @@
         function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click to finish)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start measuring', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
         function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#444'; }
         
-        function activateClippingTool() { isClipping = true; const clipBtn = document.getElementById('clip-btn'); clipBtn.textContent = 'Drawing... (Right-click to finish)'; clipBtn.style.backgroundColor = '#00bcd4'; clippingHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let points = []; let polygonEntity; clippingHandler.setInputAction(function(click) { const cartesian = viewer.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid); if (cartesian) { points.push(cartesian); clippingDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.WHITE } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); clippingHandler.setInputAction(function(movement) { if (points.length < 1) return; const cartesian = viewer.camera.pickEllipsoid(movement.endPosition, viewer.scene.globe.ellipsoid); if (cartesian) { if (!polygonEntity) { polygonEntity = clippingDataSource.entities.add({ polygon: { hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(points.concat(cartesian)), false), material: Cesium.Color.WHITE.withAlpha(0.3), outline: true, outlineColor: Cesium.Color.WHITE } }); } } }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); clippingHandler.setInputAction(function() { if (points.length < 3) { deactivateClippingTool(); return; } const clippingPlanes = []; for (let i = 0; i < points.length; ++i) { const nextIndex = (i + 1) % points.length; let midpoint = Cesium.Cartesian3.add(points[i], points[nextIndex], new Cesium.Cartesian3()); Cesium.Cartesian3.multiplyByScalar(midpoint, 0.5, midpoint); const up = Cesium.Cartesian3.normalize(midpoint, new Cesium.Cartesian3()); let right = Cesium.Cartesian3.subtract(points[nextIndex], midpoint, new Cesium.Cartesian3()); right = Cesium.Cartesian3.normalize(right, right); let normal = Cesium.Cartesian3.cross(right, up, new Cesium.Cartesian3()); normal = Cesium.Cartesian3.normalize(normal, normal); const plane = Cesium.Plane.fromPointNormal(midpoint, normal); clippingPlanes.push(new Cesium.ClippingPlane.fromPlane(plane)); } if (!myTileset.clippingPlanes) { myTileset.clippingPlanes = new Cesium.ClippingPlaneCollection({ edgeWidth: 1.0, edgeColor: Cesium.Color.WHITE }); } clippingPlanes.forEach(plane => myTileset.clippingPlanes.add(plane)); deactivateClippingTool(); }, Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
+        function activateClippingTool() {
+            isClipping = true;
+            const clipBtn = document.getElementById('clip-btn');
+            clipBtn.textContent = 'Drawing... (Right-click to finish)';
+            clipBtn.style.backgroundColor = '#00bcd4';
+            clippingHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+            let points = [];
+            let polygonEntity;
+
+            clippingHandler.setInputAction(function(click) {
+                // --- FIXED: Use scene.pickPosition to draw on terrain/model ---
+                const cartesian = viewer.scene.pickPosition(click.position);
+                if (cartesian) {
+                    points.push(cartesian);
+                    clippingDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.WHITE } });
+                }
+            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+            clippingHandler.setInputAction(function(movement) {
+                if (points.length < 1) return;
+                // --- FIXED: Use scene.pickPosition for live preview ---
+                const cartesian = viewer.scene.pickPosition(movement.endPosition);
+                if (cartesian) {
+                    if (!polygonEntity) {
+                        polygonEntity = clippingDataSource.entities.add({
+                            polygon: {
+                                hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(points.concat(cartesian)), false),
+                                material: Cesium.Color.WHITE.withAlpha(0.3),
+                                outline: true,
+                                outlineColor: Cesium.Color.WHITE,
+                                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+                            }
+                        });
+                    }
+                }
+            }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+            clippingHandler.setInputAction(function() {
+                if (points.length < 3) {
+                    deactivateClippingTool();
+                    return;
+                }
+                const clippingPlanes = [];
+                for (let i = 0; i < points.length; ++i) {
+                    const nextIndex = (i + 1) % points.length;
+                    let midpoint = Cesium.Cartesian3.add(points[i], points[nextIndex], new Cesium.Cartesian3());
+                    Cesium.Cartesian3.multiplyByScalar(midpoint, 0.5, midpoint);
+
+                    const up = Cesium.Cartesian3.normalize(midpoint, new Cesium.Cartesian3());
+                    let right = Cesium.Cartesian3.subtract(points[nextIndex], midpoint, new Cesium.Cartesian3());
+                    right = Cesium.Cartesian3.normalize(right, right);
+
+                    let normal = Cesium.Cartesian3.cross(right, up, new Cesium.Cartesian3());
+                    normal = Cesium.Cartesian3.normalize(normal, normal);
+                    
+                    const plane = Cesium.Plane.fromPointNormal(midpoint, normal);
+                    clippingPlanes.push(new Cesium.ClippingPlane.fromPlane(plane));
+                }
+                
+                // --- FIXED: Create ClippingPlaneCollection correctly ---
+                myTileset.clippingPlanes = new Cesium.ClippingPlaneCollection({
+                    planes: clippingPlanes,
+                    edgeWidth: 1.0,
+                    edgeColor: Cesium.Color.WHITE,
+                });
+                deactivateClippingTool();
+            }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+        }
         function deactivateClippingTool() { isClipping = false; if (clippingHandler) { clippingHandler.destroy(); clippingHandler = undefined; } clippingDataSource.entities.removeAll(); const clipBtn = document.getElementById('clip-btn'); clipBtn.textContent = 'Activate Clipping Tool'; clipBtn.style.backgroundColor = '#444'; }
         function clearClippingPlanes() { if (myTileset && myTileset.clippingPlanes) { myTileset.clippingPlanes.removeAll(); } }
         
