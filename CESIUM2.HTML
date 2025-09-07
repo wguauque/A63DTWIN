@@ -21,7 +21,7 @@
         #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; box-sizing: border-box; transition: background-color 0.2s, box-shadow 0.2s; }
         #toolbar button { background-color: #444; cursor: pointer; text-align: left; }
 
-        /* NEW: Style for visually pressing active tool buttons */
+        /* Style for visually pressing active tool buttons */
         .active-tool {
             background-color: #00bcd4 !important;
             color: #111 !important;
@@ -46,7 +46,7 @@
         #date-ramp-controls { display: flex; gap: 10px; width: 100%; }
         #date-ramp-controls button { width: 50%; text-align: center; }
         
-        /* NEW: Style for the Inspection Mode title */
+        /* Style for the Inspection Mode title */
         #mode-title { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); background: rgba(0, 188, 212, 0.9); color: white; padding: 8px 16px; border-radius: 6px; font-size: 1.1em; font-weight: bold; display: none; z-index: 1001; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
     </style>
 </head>
@@ -134,14 +134,12 @@
         let originalGlobeShow = true;
         let originalSse = 16; 
 
-        // FIX: Default color state is now off (neutral grey).
         const appState = { materialFilter: '', entrepriseFilter: '', prSearch: '', currentPrIndex: -1, isDateViewActive: false, isMaterialViewActive: false };
 
         function getMaterialColor(material) { const upperMaterial = material.toUpperCase(); if (upperMaterial.includes('BBSG') || upperMaterial.includes('BBTM') || upperMaterial.includes('BBME') || upperMaterial.includes('EME') || upperMaterial.includes('BBDR') || upperMaterial.includes('ACCOUSTIQ') || upperMaterial.includes('ACC')) { return Cesium.Color.DARKSLATEGRAY.toCssColorString(); } if (upperMaterial.includes('GB') || upperMaterial.includes('GNT')) { return Cesium.Color.GRAY.toCssColorString(); } if (upperMaterial.includes('SB') || upperMaterial.includes('GTLH') || upperMaterial.includes('FORME')) { return Cesium.Color.BURLYWOOD.toCssColorString(); } if (upperMaterial.includes('BET') || upperMaterial.includes('CBX')) { return Cesium.Color.LIGHTGRAY.toCssColorString(); } if (upperMaterial.includes('GEOTEXTILE')) { return Cesium.Color.WHITESMOKE.toCssColorString(); } if (upperMaterial.includes('ETANCH')) { return Cesium.Color.STEELBLUE.toCssColorString(); } return Cesium.Color.DIMGRAY.toCssColorString(); }
 
         function applyDateStyle() { if (!myTileset) return; appState.isDateViewActive = true; myTileset.style = new Cesium.Cesium3DTileStyle({ color: { conditions: [ ["regExp('^202').test(String(${excelLayerInfoDATEMS}))", "color('green')"], ["regExp('^201').test(String(${excelLayerInfoDATEMS}))", "color('lime')"], ["regExp('^200').test(String(${excelLayerInfoDATEMS}))", "color('yellow')"], ["regExp('^19').test(String(${excelLayerInfoDATEMS}))", "color('red')"], ["true", "color('gray')"] ] } }); }
 
-        // FIX: Rewritten to be more robust.
         function updateTilesetStyle() {
             if (appState.isDateViewActive) { applyDateStyle(); return; }
             if (!myTileset || !defaultStyle) return;
@@ -168,7 +166,6 @@
             const prNumber = Number(prValue);
             if (isNaN(prNumber)) return;
 
-            // FIX: Ensure numeric comparison for dataLayer property.
             const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `Number(\${dataLayer}) === ${prNumber * 1000}` });
             prLocationsTileset.style = zoomStyle;
 
@@ -183,7 +180,6 @@
             }
         }
         
-        // NEW: Centralized functions to manage Inspection Mode state.
         function enterInspectionMode() {
             if (isInInspectionMode) return;
             isInInspectionMode = true;
@@ -203,7 +199,6 @@
             myTileset.maximumScreenSpaceError = originalSse;
         }
         
-        // NEW: Centralized function to manage active tool button UI.
         function updateActiveToolButton(activeButtonId) {
             document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active-tool'));
             if (activeButtonId) {
@@ -256,7 +251,7 @@
                 defaultStyle = new Cesium.Cesium3DTileStyle({ show: true, color: { conditions: colorConditions } });
                 neutralStyle = new Cesium.Cesium3DTileStyle({ show: true, color: { conditions: [["true", "color('gainsboro')"]] } });
                 
-                myTileset.style = neutralStyle; // Start with neutral grey colors.
+                myTileset.style = neutralStyle;
 
                 myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({ edgeWidth: 2.5, edgeColor: Cesium.Color.CYAN, inverse: true, });
                 measurementDataSource = new Cesium.CustomDataSource('measurementDataSource');
@@ -314,8 +309,8 @@
             document.getElementById('prev-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex > 0) { navigateToPr(prList[appState.currentPrIndex - 1]); } });
             document.getElementById('next-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex < prList.length - 1) { navigateToPr(prList[appState.currentPrIndex + 1]); } });
             
-            document.getElementById('material-filter').addEventListener('change', () => { exitInspectionMode(); appState.materialFilter = document.getElementById('material-filter').value; updateTilesetStyle(); });
-            document.getElementById('entreprise-filter').addEventListener('change', () => { exitInspectionMode(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
+            document.getElementById('material-filter').addEventListener('change', () => { exitInspectionMode(); deactivateDateView(); appState.materialFilter = document.getElementById('material-filter').value; updateTilesetStyle(); });
+            document.getElementById('entreprise-filter').addEventListener('change', () => { exitInspectionMode(); deactivateDateView(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
             
             document.getElementById('colorize-btn').addEventListener('click', () => {
                 deactivateDateView();
