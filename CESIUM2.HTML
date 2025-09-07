@@ -126,7 +126,8 @@
         for (let i = 34; i <= 140; i++) { prList.push(i.toString()); }
         const allowedProperties = ['TYPECOUCH', 'SURFACE', 'ENTREPRISE', 'PR1', 'NORDRE', 'CHANTIER', 'FOND', 'PR2', 'DATEMS'];
 
-        let myTileset, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
+        // NEW: Variable for the PR locations asset
+        let myTileset, prLocationsTileset, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
         let selectedFeature = undefined;
         let originalColor = new Cesium.Color();
         const highlightColor = Cesium.Color.AQUA;
@@ -137,10 +138,9 @@
         let isClipping = false;
         let clippingDataSource, clippingHandler;
         
-        // ENHANCEMENT: Variables to store original view states
         let originalMinZoom = 100.0;
         let originalGlobeShow = true;
-        let originalSse = 16; // Default ScreenSpaceError
+        let originalSse = 16; 
 
         const appState = { materialFilter: '', entrepriseFilter: '', materialSearch: '', prSearch: '', currentPrIndex: -1, isDateViewActive: false };
 
@@ -164,12 +164,37 @@
 
         function updateTilesetStyle() { if (appState.isDateViewActive) { applyDateStyle(); return; } if (!myTileset || !defaultStyle) return; let showConditions = []; if (appState.materialFilter) { showConditions.push(`\${name_1} === '${appState.materialFilter}'`); } if (appState.entrepriseFilter) { showConditions.push(`\${excelLayerInfoENTREPRISE} === '${appState.entrepriseFilter}'`); } const showExpression = showConditions.length > 0 ? showConditions.join(' && ') : 'true'; let colorExpression; if (appState.prSearch) { colorExpression = `round(Number(\${excelLayerInfoPR1}) / 1000) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`; } else if (appState.materialSearch) { colorExpression = `regExp('${appState.materialSearch}', 'i').test(\${name_1}) ? color('yellow') : defaultStyle.color.expression`; } else { colorExpression = defaultStyle.color.expression; } myTileset.style = new Cesium.Cesium3DTileStyle({ show: showExpression, color: colorExpression }); }
 
-        function zoomToFeature(prValue) { if (!myTileset || !viewer || !prValue) return; const prNumber = Number(prValue); if (isNaN(prNumber)) return; const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}` }); myTileset.style = zoomStyle; setTimeout(async () => { try { await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500)); } catch (error) { console.error("Error during zoomTo operation:", error); alert("Could not zoom to the selected PR. The data may not exist or is not currently loaded."); } finally { updateTilesetStyle(); } }, 250); }
+        // REBUILT: This function now uses the new PR locations asset to zoom accurately.
+        async function zoomToFeature(prValue) {
+            if (!prLocationsTileset || !viewer || !prValue) return;
+            
+            const prNumber = Number(prValue);
+            if (isNaN(prNumber)) return;
+
+            // Temporarily style the PR locations asset to show only the target marker
+            const zoomStyle = new Cesium.Cesium3DTileStyle({
+                show: `\${dataLayer} === ${prNumber * 1000}`
+            });
+            prLocationsTileset.style = zoomStyle;
+
+            try {
+                // Zoom the camera to the isolated marker
+                await viewer.zoomTo(prLocationsTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 500));
+            } catch (error) {
+                console.error("Error during zoomTo PR location operation:", error);
+                alert("Could not zoom to the selected PR marker. The location data may not exist.");
+            } finally {
+                // Reset the style on the PR locations so all markers are available again
+                prLocationsTileset.style = undefined; 
+                
+                // Update the main model to apply the magenta highlight
+                updateTilesetStyle();
+            }
+        }
 
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
-                // FIX: Corrected the Cesium Ion access token below
                 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjOWE1NDNmOC02MzkxLTQyMWUtODFiOC1iYzMwZTZkMjg0OTUiLCJpZCI6MjgzODIyLCJpYXQiOjE3NTcxMjM2OTN9.SLvGBcu3zALbkrbRqQZS4KRrn960cXEbpW-7xWIavCY";
                 
                 viewer = new Cesium.Viewer("cesiumContainer", { timeline: false, animation: false, sceneModePicker: false, baseLayer: false, geocoder: true, creditContainer: document.createElement("div"), infoBox: false, selectionIndicator: false, requestRenderMode: true, maximumRenderTimeChange: Infinity });
@@ -192,7 +217,13 @@
                 viewer.scene.primitives.add(myTileset);
                 await myTileset.readyPromise;
                 
-                originalSse = myTileset.maximumScreenSpaceError; // Store original detail level
+                // NEW: Load the PR locations asset
+                loadingOverlay.querySelector('h1').textContent = "Loading PR Locations...";
+                prLocationsTileset = await Cesium.Cesium3DTileset.fromIonAssetId(3694630);
+                viewer.scene.primitives.add(prLocationsTileset);
+                await prLocationsTileset.readyPromise;
+
+                originalSse = myTileset.maximumScreenSpaceError;
 
                 const heightOffset = 50.0;
                 const cartographic = Cesium.Cartographic.fromCartesian(myTileset.boundingSphere.center);
@@ -200,13 +231,14 @@
                 const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, heightOffset);
                 const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
                 myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
+                // NEW: Apply the same height offset to the PR locations to ensure alignment
+                prLocationsTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
 
                 const colorConditions = materialList.map((material) => [`\${name_1} === '${material}'`, `color('${getMaterialColor(material)}')`]);
                 colorConditions.push([true, "color('white')"]);
                 defaultStyle = new Cesium.Cesium3DTileStyle({ color: { conditions: colorConditions } });
                 myTileset.style = defaultStyle;
 
-                // ENHANCEMENT: Make the clip edge thicker and a brighter color
                 myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
                     edgeWidth: 2.5,
                     edgeColor: Cesium.Color.CYAN,
@@ -233,7 +265,7 @@
         function buildMaterialFilterUI() { const select = document.getElementById('material-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Materials'; select.appendChild(allOption); materialList.forEach(material => { const option = document.createElement('option'); option.value = material; option.textContent = material; select.appendChild(option); }); }
         function buildEntrepriseFilterUI() { const select = document.getElementById('entreprise-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Companies'; select.appendChild(allOption); companyList.forEach(company => { const option = document.createElement('option'); option.value = company; option.textContent = company; select.appendChild(option); }); }
         
-        function navigateToPr(pr) { deactivateDateView(); deactivateClippingTool(); const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; document.getElementById('material-search').value = ''; appState.materialSearch = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
+        function navigateToPr(pr) { deactivateDateView(); deactivateClippingTool(true); const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; document.getElementById('material-search').value = ''; appState.materialSearch = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
         
         function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; const displayName = propName.replace('excelLayerInfo', ''); if (allowedProperties.includes(displayName.toUpperCase())) { let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
         
@@ -246,10 +278,9 @@
             clipBtn.textContent = 'Drawing... (Right-click to finish)';
             clipBtn.style.backgroundColor = '#00bcd4';
             
-            // ENHANCEMENT: Activate full inspection mode
             viewer.scene.screenSpaceCameraController.minimumZoomDistance = 1.0;
-            viewer.scene.globe.show = false; // Hide globe completely
-            myTileset.maximumScreenSpaceError = 2; // Force high detail
+            viewer.scene.globe.show = false;
+            myTileset.maximumScreenSpaceError = 2;
 
             clippingHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
             let points = [];
@@ -315,7 +346,6 @@
             clipBtn.style.backgroundColor = '#444';
 
             if (fullReset) {
-                // ENHANCEMENT: Restore all original view states
                 viewer.scene.screenSpaceCameraController.minimumZoomDistance = originalMinZoom;
                 viewer.scene.globe.show = originalGlobeShow;
                 myTileset.maximumScreenSpaceError = originalSse;
@@ -330,11 +360,10 @@
             deactivateClippingTool(true);
         }
         
-        // BUG FIX: Reverted to use updateTilesetStyle to ensure filters are always reapplied.
         function deactivateDateView() {
             appState.isDateViewActive = false;
             document.getElementById('date-ramp-banner').style.display = 'none';
-            updateTilesetStyle(); // This correctly reapplies material/company filters.
+            updateTilesetStyle();
         }
 
         function setupEventListeners() {
@@ -373,7 +402,23 @@
             document.getElementById('material-filter').addEventListener('change', () => { deactivateDateView(); appState.materialFilter = document.getElementById('material-filter').value; updateTilesetStyle(); });
             document.getElementById('entreprise-filter').addEventListener('change', () => { deactivateDateView(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
             document.getElementById('material-search').addEventListener('input', () => { deactivateDateView(); document.getElementById('pr-search').value = ''; document.getElementById('autocomplete-results').innerHTML = ''; appState.prSearch = ''; appState.materialSearch = document.getElementById('material-search').value; updateTilesetStyle(); });
-            document.getElementById('reset-btn').addEventListener('click', () => { deactivateDateView(); clearClippingPlanes(); document.getElementById('material-filter').value = ''; document.getElementById('entreprise-filter').value = ''; document.getElementById('material-search').value = ''; document.getElementById('pr-search').value = ''; document.getElementById('autocomplete-results').innerHTML = ''; appState.materialFilter = ''; appState.entrepriseFilter = ''; appState.materialSearch = ''; appState.prSearch = ''; appState.currentPrIndex = -1; myTileset.style = defaultStyle; viewer.zoomTo(myTileset); });
+            
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                document.getElementById('material-filter').value = '';
+                document.getElementById('entreprise-filter').value = '';
+                document.getElementById('material-search').value = '';
+                document.getElementById('pr-search').value = '';
+                document.getElementById('autocomplete-results').innerHTML = '';
+                appState.materialFilter = '';
+                appState.entrepriseFilter = '';
+                appState.materialSearch = '';
+                appState.prSearch = '';
+                appState.currentPrIndex = -1;
+
+                clearClippingPlanes();
+                
+                viewer.zoomTo(myTileset);
+            });
         }
         
         main();
