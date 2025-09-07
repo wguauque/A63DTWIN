@@ -17,9 +17,9 @@
         .cesium-widget-credits { display: none !important; }
         
         #toolbar { position: absolute; top: 100px; left: 15px; background: rgba(35,35,35,0.95); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 1000; max-width: 280px; color: white; }
-        .toolbar-group-label { font-weight: bold; font-size: 0.95em; color: #00bcd4; margin-top: 12px; margin-bottom: 8px; padding-left: 2px; display: block; border-bottom: 1px solid #555; padding-bottom: 3px; }
-        #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #2a2a2a; color: #fff; box-sizing: border-box; }
-        #toolbar button { background-color: #383838; cursor: pointer; text-align: left; }
+        .toolbar-group-label { font-weight: bold; font-size: 0.95em; color: #00bcd4; margin-top: 12px; margin-bottom: 8px; padding-left: 2px; display: block; border-bottom: 1px solid #444; padding-bottom: 3px; }
+        #toolbar input, #toolbar select, #toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #333; color: #fff; box-sizing: border-box; }
+        #toolbar button { background-color: #444; cursor: pointer; text-align: left; }
 
         .pr-search-container { position: relative; }
         #autocomplete-results { position: absolute; top: 100%; left: 2px; right: 2px; background: #3a3a3a; border: 1px solid #777; border-top: none; border-radius: 0 0 4px 4px; z-index: 1002; max-height: 200px; overflow-y: auto; }
@@ -31,20 +31,17 @@
         #infobox th, #infobox td { padding: 5px 2px; text-align: left; }
         #infobox th { font-weight: bold; color: #ccc; width: 40%; }
         
-        .banner { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(35, 35, 35, 0.95); color: white; padding: 15px; border-radius: 8px; border: 1px solid #666; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 1001; display: none; flex-direction: column; align-items: center; }
-        .banner h3 { margin: 0 0 10px 0; }
-        .banner-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 10px; font-size: 0.85em; }
+        #date-ramp-banner, #typecouch-ramp-banner { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(35, 35, 35, 0.9); color: white; padding: 15px; border-radius: 8px; border: 1px solid #666; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 1001; display: none; flex-direction: column; align-items: center; width: auto; min-width: 350px; }
+        #date-ramp-banner h3, #typecouch-ramp-banner h3 { margin: 0 0 10px 0; color: #00bcd4; }
+        #date-ramp-legend, #typecouch-ramp-legend { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 10px; font-size: 0.85em; justify-content: center;}
         .legend-item { display: flex; align-items: center; }
         .color-box { width: 15px; height: 15px; margin-right: 5px; border: 1px solid #888; }
-        .banner-controls { display: flex; gap: 10px; width: 100%; }
-        .banner-controls button { width: 50%; text-align: center; }
+        #date-ramp-controls, #typecouch-ramp-controls { display: flex; gap: 10px; width: 100%; margin-top: 5px; }
+        #date-ramp-controls button, #typecouch-ramp-controls button { width: 50%; text-align: center; }
         
-        #date-ramp-banner h3 { color: #00bcd4; }
-        #typecouch-banner h3 { color: #9c27b0; }
-
         #inspection-toolbar { position: absolute; top: 100px; right: 15px; background: rgba(35,35,35,0.95); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 1000; width: 240px; color: white; }
         #inspection-toolbar .toolbar-group-label { color: #ff9800; }
-        #inspection-toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #383838; color: #fff; box-sizing: border-box; cursor: pointer; text-align: left; }
+        #inspection-toolbar button { width: calc(100% - 4px); padding: 8px; margin: 4px 2px; border-radius: 4px; border: 1px solid #666; background-color: #444; color: #fff; box-sizing: border-box; cursor: pointer; text-align: left; }
         
         #mode-notification { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(35, 35, 35, 0.9); color: white; padding: 20px 40px; border-radius: 10px; font-size: 1.2em; text-align: center; font-weight: bold; z-index: 10000; display: none; opacity: 0; transition: opacity 0.5s ease-in-out; pointer-events: none; }
     </style>
@@ -72,7 +69,6 @@
         <span class="toolbar-group-label">Tools</span>
         <button id="measure-btn">Activate Measurement Tool</button>
         <button id="show-date-ramp-btn">Intervention Date Ramp</button>
-        <button id="colorize-type-btn">Colorize by Layer Type</button>
         
         <span class="toolbar-group-label">Navigate Highway (by PR)</span>
         <div class="pr-search-container">
@@ -87,6 +83,9 @@
         <span class="toolbar-group-label">Filter by Company</span>
         <select id="entreprise-filter"></select>
         
+        <span class="toolbar-group-label">Layer Analysis</span>
+        <button id="show-typecouch-ramp-btn">Colorize by Layer Type</button>
+        
         <button id="reset-btn" style="margin-top: 10px;">Reset View</button>
     </div>
 
@@ -97,26 +96,27 @@
         <button id="clear-clips-btn">Exit Inspection & Clear</button>
     </div>
 
-    <div id="date-ramp-banner" class="banner">
+    <div id="date-ramp-banner">
         <h3>Intervention Date Colour Ramp</h3>
-        <div class="banner-legend">
+        <div id="date-ramp-legend">
             <div class="legend-item"><span class="color-box" style="background-color: green;"></span> 2020+</div>
             <div class="legend-item"><span class="color-box" style="background-color: lime;"></span> 2010-2019</div>
             <div class="legend-item"><span class="color-box" style="background-color: yellow;"></span> 2000-2009</div>
             <div class="legend-item"><span class="color-box" style="background-color: red;"></span> &lt; 2000</div>
             <div class="legend-item"><span class="color-box" style="background-color: gray;"></span> No Data</div>
         </div>
-        <div class="banner-controls">
+        <div id="date-ramp-controls">
             <button id="apply-date-ramp-btn">Apply Ramp</button>
             <button id="close-date-ramp-btn">Close</button>
         </div>
     </div>
-
-    <div id="typecouch-banner" class="banner">
+    
+    <div id="typecouch-ramp-banner">
         <h3>Layer Type (TYPECOUCH)</h3>
-        <div id="typecouch-legend" class="banner-legend"></div>
-        <div class="banner-controls" style="justify-content: center;">
-             <button id="close-typecouch-btn" style="width: 100%;">Close</button>
+        <div id="typecouch-ramp-legend"></div>
+        <div id="typecouch-ramp-controls">
+            <button id="apply-typecouch-ramp-btn">Apply Colorization</button>
+            <button id="close-typecouch-ramp-btn">Close & Reset Style</button>
         </div>
     </div>
 
@@ -126,16 +126,16 @@
         const prList = [];
         for (let i = 34; i <= 140; i++) { prList.push(i.toString()); }
         const allowedProperties = ['TYPECOUCH', 'SURFACE', 'ENTREPRISE', 'PR1', 'NORDRE', 'CHANTIER', 'FOND', 'PR2', 'DATEMS'];
-        
-        const typecouchColors = {
-            'Roulement': { color: Cesium.Color.fromCssColorString('#424242'), legend: 'Roulement (Wearing)' },
-            'Liaison': { color: Cesium.Color.fromCssColorString('#616161'), legend: 'Liaison (Binder)' },
-            'Base': { color: Cesium.Color.fromCssColorString('#A1887F'), legend: 'Base' },
-            'Fondations': { color: Cesium.Color.fromCssColorString('#BCAAA4'), legend: 'Fondations (Sub-base)' },
-            'Arase': { color: Cesium.Color.fromCssColorString('#90A4AE'), legend: 'Arase' },
-            'Forme': { color: Cesium.Color.fromCssColorString('#FFE0B2'), legend: 'Forme (Subgrade)' },
-            'couche de forme': { color: Cesium.Color.fromCssColorString('#FFE0B2'), legend: 'Forme (Subgrade)' },
-            'DEFAULT': { color: Cesium.Color.fromCssColorString('#BDBDBD'), legend: 'Other / N/A' }
+
+        const typeCouchMap = {
+            'Roulement':      { color: Cesium.Color.fromCssColorString('#4A4A4A'), label: 'Wearing Course' },
+            'Liaison':        { color: Cesium.Color.fromCssColorString('#6E6E6E'), label: 'Binding Course' },
+            'Base':           { color: Cesium.Color.fromCssColorString('#8B4513'), label: 'Base Course' },
+            'Arase':          { color: Cesium.Color.fromCssColorString('#B0C4DE'), label: 'Leveling Course' },
+            'Fondations':     { color: Cesium.Color.fromCssColorString('#A0522D'), label: 'Foundation' },
+            'Forme':          { color: Cesium.Color.fromCssColorString('#D2B48C'), label: 'Subgrade' },
+            'couche de forme':{ color: Cesium.Color.fromCssColorString('#D2B48C'), label: 'Subgrade' },
+            'blank':          { color: Cesium.Color.LIGHTSLATEGRAY, label: 'Not Specified' }
         };
 
         let myTileset, defaultStyle, viewer, photorealisticTileset, defaultImageryLayer;
@@ -151,7 +151,9 @@
         let originalGlobeShow = true;
         let originalPhotoTilesShow = false;
 
-        const appState = { entrepriseFilter: '', prSearch: '', currentPrIndex: -1, isDateViewActive: false, isTypecouchViewActive: false };
+        const appState = { entrepriseFilter: '', prSearch: '', currentPrIndex: -1, isDateViewActive: false, isTypeCouchViewActive: false };
+
+        function getMaterialColor(material) { const upperMaterial = material.toUpperCase(); if (upperMaterial.includes('BBSG') || upperMaterial.includes('BBTM') || upperMaterial.includes('BBME') || upperMaterial.includes('EME') || upperMaterial.includes('BBDR') || upperMaterial.includes('ACCOUSTIQ') || upperMaterial.includes('ACC')) { return Cesium.Color.DIMGRAY.toCssColorString(); } if (upperMaterial.includes('GB') || upperMaterial.includes('GNT')) { return Cesium.Color.GRAY.toCssColorString(); } if (upperMaterial.includes('SB') || upperMaterial.includes('GTLH') || upperMaterial.includes('FORME')) { return Cesium.Color.BURLYWOOD.toCssColorString(); } if (upperMaterial.includes('BET') || upperMaterial.includes('CBX')) { return Cesium.Color.LIGHTGRAY.toCssColorString(); } if (upperMaterial.includes('GEOTEXTILE')) { return Cesium.Color.WHITESMOKE.toCssColorString(); } if (upperMaterial.includes('ETANCH')) { return Cesium.Color.STEELBLUE.toCssColorString(); } return Cesium.Color.DIMGRAY.toCssColorString(); }
 
         function applyDateStyle() {
             if (!myTileset) return;
@@ -169,24 +171,27 @@
             viewer.scene.requestRender();
         }
 
-        function applyTypecouchStyle() {
+        function applyTypeCouchStyle() {
             if (!myTileset) return;
-            const conditions = Object.entries(typecouchColors)
-                .filter(([key]) => key !== 'DEFAULT')
-                .map(([key, value]) => {
-                    return [`\${excelLayerInfoTYPECOUCH} === '${key}'`, `color('${value.color.toCssColorString()}')`];
-                });
-            conditions.push(['true', `color('${typecouchColors.DEFAULT.color.toCssColorString()}')`]);
-            
+            const conditions = Object.entries(typeCouchMap).flatMap(([key, value]) => {
+                const colorStr = `color('${value.color.toCssColorString()}')`;
+                if (key === 'blank') {
+                    return [["!(${excelLayerInfoTYPECOUCH})", colorStr]];
+                } else {
+                    return [[`\${excelLayerInfoTYPECOUCH} === '${key}'`, colorStr]];
+                }
+            });
+            conditions.push(["true", "color('white')"]); // Fallback for any other value
             myTileset.style = new Cesium.Cesium3DTileStyle({ color: { conditions: conditions } });
             viewer.scene.requestRender();
         }
 
         function updateTilesetStyle() {
             if (appState.isDateViewActive) { applyDateStyle(); return; }
-            if (appState.isTypecouchViewActive) { applyTypecouchStyle(); return; }
-            if (!myTileset || !defaultStyle) return;
+            if (appState.isTypeCouchViewActive) { applyTypeCouchStyle(); return; }
 
+            if (!myTileset || !defaultStyle) return;
+            
             let showConditions = [];
             if (appState.entrepriseFilter) {
                 showConditions.push(`\${excelLayerInfoENTREPRISE} === '${appState.entrepriseFilter}'`);
@@ -195,31 +200,25 @@
 
             let colorExpression;
             if (appState.prSearch) {
-                colorExpression = `round(Number(\${excelLayerInfoPR1}) / 1000) === ${Number(appState.prSearch)} ? color('magenta') : 'color("white")'`;
+                colorExpression = `round(Number(\${excelLayerInfoPR1}) / 1000) === ${Number(appState.prSearch)} ? color('magenta') : defaultStyle.color.expression`;
             } else {
-                colorExpression = 'color("white")';
+                colorExpression = defaultStyle.color.expression;
             }
+            
             myTileset.style = new Cesium.Cesium3DTileStyle({ show: showExpression, color: colorExpression });
             viewer.scene.requestRender();
         }
 
-        function zoomToFeature(prValue) {
-            if (!myTileset || !viewer || !prValue) return;
-            const prNumber = Number(prValue);
-            if (isNaN(prNumber)) return;
-            const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}` });
-            myTileset.style = zoomStyle;
-            setTimeout(async () => {
-                try {
-                    await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500));
-                } catch (error) {
-                    console.error("Error during zoomTo operation:", error);
-                } finally {
-                    updateTilesetStyle();
-                }
-            }, 250);
-        }
+        function zoomToFeature(prValue) { if (!myTileset || !viewer || !prValue) return; const prNumber = Number(prValue); if (isNaN(prNumber)) return; const zoomStyle = new Cesium.Cesium3DTileStyle({ show: `round(Number(\${excelLayerInfoPR1}) / 1000) === ${prNumber}` }); myTileset.style = zoomStyle; setTimeout(async () => { try { await viewer.zoomTo(myTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-75), 2500)); } catch (error) { console.error("Error during zoomTo operation:", error); } finally { updateTilesetStyle(); } }, 250); }
         
+        function calculateCentroid(points) {
+            let sum = new Cesium.Cartesian3(0, 0, 0);
+            points.forEach(p => {
+                Cesium.Cartesian3.add(sum, p, sum);
+            });
+            return Cesium.Cartesian3.divideByScalar(sum, points.length, new Cesium.Cartesian3());
+        }
+
         async function main() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             try {
@@ -250,8 +249,16 @@
                 const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
                 myTileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
 
-                defaultStyle = new Cesium.Cesium3DTileStyle({ color: "color('white')" });
+                const colorConditions = [
+                    ["${name_1}", `color('${getMaterialColor("${name_1}")}')`],
+                    [true, "color('white')"]
+                ];
+                defaultStyle = new Cesium.Cesium3DTileStyle({
+                    color: "color('DIMGRAY')" // A simple default color
+                });
                 myTileset.style = defaultStyle;
+
+                myTileset.clippingPolygons = new Cesium.ClippingPolygonCollection({ edgeWidth: 1.0, edgeColor: Cesium.Color.WHITE });
 
                 measurementDataSource = new Cesium.CustomDataSource('measurementDataSource');
                 viewer.dataSources.add(measurementDataSource);
@@ -259,7 +266,7 @@
                 viewer.dataSources.add(clippingDataSource);
 
                 buildEntrepriseFilterUI();
-                buildTypecouchLegend();
+                buildTypeCouchLegendUI();
                 setupEventListeners();
 
                 loadingOverlay.querySelector('h1').textContent = "Positioning Camera...";
@@ -271,42 +278,28 @@
 
         function buildEntrepriseFilterUI() { const select = document.getElementById('entreprise-filter'); select.innerHTML = ''; const allOption = document.createElement('option'); allOption.value = ''; allOption.textContent = 'Show All Companies'; select.appendChild(allOption); companyList.forEach(company => { const option = document.createElement('option'); option.value = company; option.textContent = company; select.appendChild(option); }); }
         
-        function buildTypecouchLegend() {
-            const legendContainer = document.getElementById('typecouch-legend');
+        function buildTypeCouchLegendUI() {
+            const legendContainer = document.getElementById('typecouch-ramp-legend');
             legendContainer.innerHTML = '';
-            const uniqueLegends = {};
-            Object.values(typecouchColors).forEach(value => {
-                if (!uniqueLegends[value.legend]) {
-                    uniqueLegends[value.legend] = value.color.toCssColorString();
-                }
-            });
-            for (const [text, color] of Object.entries(uniqueLegends)) {
-                const item = document.createElement('div');
-                item.className = 'legend-item';
-                item.innerHTML = `<span class="color-box" style="background-color: ${color};"></span> ${text}`;
-                legendContainer.appendChild(item);
+            for (const key in typeCouchMap) {
+                const item = typeCouchMap[key];
+                const legendItem = document.createElement('div');
+                legendItem.className = 'legend-item';
+                legendItem.innerHTML = `<span class="color-box" style="background-color: ${item.color.toCssColorString()};"></span> ${item.label}`;
+                legendContainer.appendChild(legendItem);
             }
         }
-
-        function navigateToPr(pr) {
-            clearAllStates();
-            const prSearchInput = document.getElementById('pr-search');
-            prSearchInput.value = pr;
-            document.getElementById('autocomplete-results').innerHTML = '';
-            appState.prSearch = pr;
-            appState.currentPrIndex = prList.indexOf(pr);
-            updateTilesetStyle();
-            zoomToFeature(pr);
-        }
+        
+        function navigateToPr(pr) { clearClippingPlanes(); deactivateAllModes(); const prSearchInput = document.getElementById('pr-search'); prSearchInput.value = pr; document.getElementById('autocomplete-results').innerHTML = ''; appState.prSearch = pr; appState.currentPrIndex = prList.indexOf(pr); updateTilesetStyle(); zoomToFeature(pr); }
         
         function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; const displayName = propName.replace('excelLayerInfo', ''); if (allowedProperties.includes(displayName.toUpperCase())) { let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
         
         function activateMeasurement() { isMeasuring = true; document.getElementById('measure-btn').textContent = 'Deactivate Measurement (Right-click)'; document.getElementById('measure-btn').style.backgroundColor = '#00bcd4'; measurementHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas); let positions = []; let totalDistance = 0; let dynamicLine, distanceLabel; measurementHandler.setInputAction(function (movement) { if (positions.length === 0) return; const cartesian = viewer.scene.pickPosition(movement.endPosition); if (!Cesium.defined(cartesian)) return; if (!Cesium.defined(dynamicLine)) { dynamicLine = measurementDataSource.entities.add({ polyline: { positions: new Cesium.CallbackProperty(() => [positions[positions.length - 1], cartesian], false), width: 2, material: Cesium.Color.YELLOW } }); } const segmentDistance = Cesium.Cartesian3.distance(positions[positions.length - 1], cartesian); distanceLabel.position = cartesian; distanceLabel.label.text = `Total: ${(totalDistance + segmentDistance).toFixed(2)} m`; }, Cesium.ScreenSpaceEventType.MOUSE_MOVE); measurementHandler.setInputAction(function (click) { const cartesian = viewer.scene.pickPosition(click.position); if (!Cesium.defined(cartesian)) return; positions.push(cartesian); if (positions.length > 1) { const lastPoint = positions[positions.length - 2]; totalDistance += Cesium.Cartesian3.distance(lastPoint, cartesian); measurementDataSource.entities.add({ polyline: { positions: [lastPoint, cartesian], width: 3, material: Cesium.Color.ORANGERED } }); } measurementDataSource.entities.add({ position: cartesian, point: { pixelSize: 8, color: Cesium.Color.ORANGERED } }); if (!Cesium.defined(distanceLabel)) { distanceLabel = measurementDataSource.entities.add({ position: cartesian, label: { text: 'Start', font: '14pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -9) } }); } }, Cesium.ScreenSpaceEventType.LEFT_CLICK); measurementHandler.setInputAction(() => deactivateMeasurement(), Cesium.ScreenSpaceEventType.RIGHT_CLICK); }
-        function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#383838'; viewer.scene.requestRender(); }
+        function deactivateMeasurement() { isMeasuring = false; if (Cesium.defined(measurementHandler)) { measurementHandler.destroy(); measurementHandler = undefined; } measurementDataSource.entities.removeAll(); document.getElementById('measure-btn').textContent = 'Activate Measurement Tool'; document.getElementById('measure-btn').style.backgroundColor = '#444'; viewer.scene.requestRender(); }
         
         function activateClippingTool() {
             const notification = document.getElementById('mode-notification');
-            notification.textContent = 'Click to draw points. Right-click when finished to inspect the section.';
+            notification.textContent = 'Click on the model to delineate the section. Right-click when complete.';
             notification.style.display = 'block';
             setTimeout(() => { notification.style.opacity = '1'; }, 10);
             setTimeout(() => { notification.style.opacity = '0'; setTimeout(() => { notification.style.display = 'none'; notification.textContent = 'Inspection Mode'; }, 500); }, 3500);
@@ -352,49 +345,29 @@
                     setTimeout(() => { notification.style.opacity = '1'; }, 10);
                     setTimeout(() => { notification.style.opacity = '0'; setTimeout(() => { notification.style.display = 'none'; }, 500); }, 2000);
 
+                    appState.isDateViewActive = true;
+                    applyDateStyle();
+                    document.getElementById('date-ramp-banner').style.display = 'flex';
                     originalGlobeShow = viewer.scene.globe.show;
                     viewer.scene.globe.show = false;
                     if (photorealisticTileset) {
                         originalPhotoTilesShow = photorealisticTileset.show;
                         photorealisticTileset.show = false;
                     }
-                    
-                    // Create clipping planes to show ONLY the inside
-                    const pointsLength = points.length;
-                    const clippingPlanes = [];
-                    const boundingSphere = Cesium.BoundingSphere.fromPoints(points);
-                    const center = boundingSphere.center;
-                    
-                    // Create vertical planes for each polygon edge
-                    for (let i = 0; i < pointsLength; ++i) {
-                        const nextIndex = (i + 1) % pointsLength;
-                        const p1 = points[i];
-                        const p2 = points[nextIndex];
-                        
-                        let normal = Cesium.Cartesian3.subtract(p2, p1, new Cesium.Cartesian3());
-                        normal = Cesium.Cartesian3.normalize(normal, normal);
-                        
-                        const p1_to_center = Cesium.Cartesian3.subtract(center, p1, new Cesium.Cartesian3());
-                        const up = Cesium.Cartesian3.normalize(p1, new Cesium.Cartesian3());
-                        let right = Cesium.Cartesian3.cross(up, normal, new Cesium.Cartesian3());
-                        right = Cesium.Cartesian3.normalize(right, right);
 
-                        let normal_tmp = Cesium.Cartesian3.cross(normal, right, new Cesium.Cartesian3());
-                        normal_tmp = Cesium.Cartesian3.normalize(normal_tmp, normal_tmp);
-
-                        if(Cesium.Cartesian3.dot(normal_tmp, p1_to_center) < 0) {
-                            normal_tmp = Cesium.Cartesian3.multiplyByScalar(normal_tmp, -1, normal_tmp);
-                        }
-                        
-                        const plane = new Cesium.ClippingPlane(normal_tmp, -Cesium.Cartesian3.dot(normal_tmp, p1));
-                        clippingPlanes.push(plane);
-                    }
-                     myTileset.clippingPlanes = new Cesium.ClippingPlaneCollection({
-                        planes: clippingPlanes,
-                        edgeWidth: 1.0,
-                        edgeColor: Cesium.Color.WHITE,
-                        enabled: true
+                    const offsetDistance = 5.0; 
+                    const centroid = calculateCentroid(points);
+                    const offsetPoints = points.map(p => {
+                        const direction = Cesium.Cartesian3.subtract(p, centroid, new Cesium.Cartesian3());
+                        Cesium.Cartesian3.normalize(direction, direction);
+                        const offsetVector = Cesium.Cartesian3.multiplyByScalar(direction, offsetDistance, new Cesium.Cartesian3());
+                        return Cesium.Cartesian3.add(p, offsetVector, new Cesium.Cartesian3());
                     });
+
+                    const newClippingPolygon = new Cesium.ClippingPolygon({
+                        positions: offsetPoints
+                    });
+                    myTileset.clippingPolygons.add(newClippingPolygon);
                 }
                 deactivateClippingDrawing(); 
             }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
@@ -409,54 +382,52 @@
             clippingDataSource.entities.removeAll();
             const clipBtn = document.getElementById('clip-btn');
             clipBtn.textContent = 'Activate Clipping Tool';
-            clipBtn.style.backgroundColor = '#383838';
+            clipBtn.style.backgroundColor = '#444';
             viewer.scene.requestRender();
         }
 
         function clearClippingPlanes() {
             if (isClipping) deactivateClippingDrawing();
-            if (myTileset) {
-                 myTileset.clippingPlanes = undefined;
+            if (myTileset && myTileset.clippingPolygons) {
+                myTileset.clippingPolygons.removeAll();
             }
             viewer.scene.globe.show = originalGlobeShow;
             if (photorealisticTileset) {
                 photorealisticTileset.show = originalPhotoTilesShow;
             }
+            deactivateDateView(); 
         }
         
         function deactivateDateView() { appState.isDateViewActive = false; document.getElementById('date-ramp-banner').style.display = 'none'; updateTilesetStyle(); }
-        function deactivateTypecouchView() { appState.isTypecouchViewActive = false; document.getElementById('typecouch-banner').style.display = 'none'; updateTilesetStyle(); }
+        function deactivateTypeCouchView() { appState.isTypeCouchViewActive = false; document.getElementById('typecouch-ramp-banner').style.display = 'none'; updateTilesetStyle(); }
+        function deactivateAllModes() { deactivateDateView(); deactivateTypeCouchView(); }
         
-        function clearAllStates(){
-             deactivateMeasurement();
-             clearClippingPlanes();
-             deactivateDateView();
-             deactivateTypecouchView();
-        }
-
         function setupEventListeners() {
             const selectionHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
             selectionHandler.setInputAction(function (movement) { if (isMeasuring || isClipping) return; if (Cesium.defined(selectedFeature)) { selectedFeature.color = originalColor; selectedFeature = undefined; } const pickedFeature = viewer.scene.pick(movement.position); const infobox = document.getElementById('infobox'); if (pickedFeature instanceof Cesium.Cesium3DTileFeature) { selectedFeature = pickedFeature; Cesium.Color.clone(selectedFeature.color, originalColor); selectedFeature.color = highlightColor; displayFeatureInfo(pickedFeature); } else { infobox.style.display = 'none'; } viewer.scene.requestRender(); }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-            document.getElementById('measure-btn').addEventListener('click', () => { if (isMeasuring) { deactivateMeasurement(); } else { clearAllStates(); activateMeasurement(); } });
-            document.getElementById('show-date-ramp-btn').addEventListener('click', () => { clearAllStates(); document.getElementById('date-ramp-banner').style.display = 'flex'; });
-            document.getElementById('apply-date-ramp-btn').addEventListener('click', () => { appState.isDateViewActive = true; updateTilesetStyle(); });
-            document.getElementById('close-date-ramp-btn').addEventListener('click', deactivateDateView);
-            
-            document.getElementById('colorize-type-btn').addEventListener('click', () => { clearAllStates(); appState.isTypecouchViewActive = true; document.getElementById('typecouch-banner').style.display = 'flex'; updateTilesetStyle(); });
-            document.getElementById('close-typecouch-btn').addEventListener('click', deactivateTypecouchView);
+            document.getElementById('measure-btn').addEventListener('click', () => { if (isMeasuring) { deactivateMeasurement(); } else { clearClippingPlanes(); deactivateAllModes(); activateMeasurement(); } });
+            document.getElementById('show-date-ramp-btn').addEventListener('click', () => { clearClippingPlanes(); deactivateAllModes(); document.getElementById('date-ramp-banner').style.display = 'flex'; });
+            document.getElementById('apply-date-ramp-btn').addEventListener('click', () => { deactivateTypeCouchView(); appState.isDateViewActive = true; if(isClipping) deactivateClippingDrawing(); deactivateMeasurement(); updateTilesetStyle(); });
+            document.getElementById('close-date-ramp-btn').addEventListener('click', () => { deactivateDateView(); });
 
-            document.getElementById('clip-btn').addEventListener('click', () => { if (isClipping) { deactivateClippingDrawing(); } else { clearAllStates(); activateClippingTool(); } });
-            document.getElementById('clear-clips-btn').addEventListener('click', () => { clearAllStates(); updateTilesetStyle(); });
+            document.getElementById('show-typecouch-ramp-btn').addEventListener('click', () => { clearClippingPlanes(); deactivateAllModes(); document.getElementById('typecouch-ramp-banner').style.display = 'flex'; });
+            document.getElementById('apply-typecouch-ramp-btn').addEventListener('click', () => { deactivateDateView(); appState.isTypeCouchViewActive = true; if(isClipping) deactivateClippingDrawing(); deactivateMeasurement(); updateTilesetStyle(); });
+            document.getElementById('close-typecouch-ramp-btn').addEventListener('click', () => { deactivateTypeCouchView(); });
+
+            document.getElementById('clip-btn').addEventListener('click', () => { if (isClipping) { deactivateClippingDrawing(); } else { clearClippingPlanes(); deactivateAllModes(); deactivateMeasurement(); activateClippingTool(); } });
+            document.getElementById('clear-clips-btn').addEventListener('click', clearClippingPlanes);
 
             document.getElementById('basemap-picker').addEventListener('change', (event) => { const selectedBasemap = event.target.value; if (selectedBasemap === 'photorealistic') { if(photorealisticTileset) photorealisticTileset.show = true; defaultImageryLayer.show = false; viewer.scene.globe.baseColor = Cesium.Color.BLACK; originalPhotoTilesShow = true; } else { if(photorealisticTileset) photorealisticTileset.show = false; defaultImageryLayer.show = true; viewer.scene.globe.baseColor = Cesium.Color.TRANSPARENT; originalPhotoTilesShow = false; } viewer.scene.requestRender(); });
-            document.getElementById('pr-search').addEventListener('input', () => { const value = document.getElementById('pr-search').value.toLowerCase(); const autocompleteResults = document.getElementById('autocomplete-results'); autocompleteResults.innerHTML = ''; if (!value) { appState.prSearch = ''; updateTilesetStyle(); return; } const filteredPRs = prList.filter(pr => pr.toLowerCase().startsWith(value)); filteredPRs.forEach(pr => { const item = document.createElement('div'); item.className = 'autocomplete-item'; item.textContent = pr; item.addEventListener('click', () => navigateToPr(pr)); autocompleteResults.appendChild(item); }); });
+            document.getElementById('pr-search').addEventListener('input', () => { clearClippingPlanes(); deactivateAllModes(); const value = document.getElementById('pr-search').value.toLowerCase(); const autocompleteResults = document.getElementById('autocomplete-results'); autocompleteResults.innerHTML = ''; if (!value) { appState.prSearch = ''; updateTilesetStyle(); return; } const filteredPRs = prList.filter(pr => pr.toLowerCase().startsWith(value)); filteredPRs.forEach(pr => { const item = document.createElement('div'); item.className = 'autocomplete-item'; item.textContent = pr; item.addEventListener('click', () => navigateToPr(pr)); autocompleteResults.appendChild(item); }); });
             document.getElementById('prev-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex > 0) { navigateToPr(prList[appState.currentPrIndex - 1]); } });
             document.getElementById('next-pr-btn').addEventListener('click', () => { if (appState.currentPrIndex < prList.length - 1) { navigateToPr(prList[appState.currentPrIndex + 1]); } });
-            document.getElementById('entreprise-filter').addEventListener('change', () => { clearAllStates(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
+            document.getElementById('entreprise-filter').addEventListener('change', () => { clearClippingPlanes(); deactivateAllModes(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
             
             document.getElementById('reset-btn').addEventListener('click', () => { 
-                clearAllStates();
+                deactivateMeasurement(); 
+                clearClippingPlanes();
+                deactivateAllModes();
                 document.getElementById('entreprise-filter').value = ''; 
                 document.getElementById('pr-search').value = ''; 
                 document.getElementById('autocomplete-results').innerHTML = ''; 
