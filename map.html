@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A63 Digital Twin - ArcGIS Map</title>
-    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/main.css"> 
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
 </head>
 <body>
@@ -57,22 +57,45 @@
     </main>
 
     <script src="https://js.arcgis.com/4.29/"></script>
+
     <script>
         require([
-            "esri/Map", "esri/views/SceneView", "esri/layers/FeatureLayer",
-            "esri/widgets/Sketch/SketchViewModel", "esri/layers/GraphicsLayer", "esri/Graphic"
-        ], (Map, SceneView, FeatureLayer, SketchViewModel, GraphicsLayer, Graphic) => {
+            "esri/config",
+            "esri/Map",
+            "esri/views/SceneView",
+            "esri/layers/FeatureLayer",
+            "esri/widgets/Sketch/SketchViewModel",
+            "esri/layers/GraphicsLayer",
+            "esri/Graphic"
+        ], (
+            esriConfig,
+            Map,
+            SceneView,
+            FeatureLayer,
+            SketchViewModel,
+            GraphicsLayer,
+            Graphic
+        ) => {
             
+            // IMPORTANT: Replace this placeholder with your actual ArcGIS API key.
+            // Keep your key private and do not commit it to a public repository if possible.
+            esriConfig.apiKey = "__ARCGIS_API_KEY__";
+
             const map = new Map({
                 basemap: "terrain",
                 ground: "world-elevation"
             });
 
             const view = new SceneView({
-                container: "viewDiv", map: map, center: [2.35, 48.85], zoom: 12
+                container: "viewDiv",
+                map: map,
+                center: [2.35, 48.85], // Initial center, will be overridden by goTo
+                zoom: 12
             });
 
-            const sketchLayer = new GraphicsLayer({ listMode: "hide" });
+            const sketchLayer = new GraphicsLayer({
+                listMode: "hide"
+            });
             map.add(sketchLayer);
 
             const paveLayer = new FeatureLayer({
@@ -80,8 +103,12 @@
                 outFields: ["*"],
                 popupTemplate: {
                     title: "{Voie} - Zone {zone} mm",
-                    content: `<b>Description:</b> {descriptio}<br><b>Last Update:</b> {date_derni:DateFormat}<br> <b>Surface:</b> {surface} m²<br>
-                              <b>Length:</b> {Shape__Length:NumberFormat(places:2)} m<br> <b>PR:</b> {PR_1} → {PR_2}<br><b>Direction:</b> {Sens}`
+                    content: `<b>Description:</b> {descriptio}<br>
+                              <b>Last Update:</b> {date_derni:DateFormat}<br>
+                              <b>Surface:</b> {surface} m²<br>
+                              <b>Length:</b> {Shape__Length:NumberFormat(places:2)} m<br>
+                              <b>PR:</b> {PR_1} → {PR_2}<br>
+                              <b>Direction:</b> {Sens}`
                 },
                 renderer: {
                     type: "simple",
@@ -90,32 +117,44 @@
                         symbolLayers: [{
                             type: "extrude",
                             material: { color: "orange" },
-                            size: 1
+                            size: 1 // This acts as a base size before visual variables are applied
                         }]
                     },
                     visualVariables: [{
-                        type: "size", field: "zone", valueExpressionTitle: "Thickness (mm)",
+                        type: "size",
+                        field: "zone",
+                        valueExpressionTitle: "Thickness (mm)",
                         stops: [
-                            { value: 0, size: 0.01 }, { value: 50, size: 0.05 }, { value: 150, size: 0.15 },
-                            { value: 300, size: 0.3 }, { value: 500, size: 0.5 }
+                            { value: 0, size: 0.01 },
+                            { value: 50, size: 0.05 },
+                            { value: 150, size: 0.15 },
+                            { value: 300, size: 0.3 },
+                            { value: 500, size: 0.5 }
                         ],
-                        valueUnit: "meters", outOfRangeSize: 0.1
+                        valueUnit: "meters",
+                        outOfRangeSize: 0.1
                     }, {
-                        type: "color", field: "zone",
+                        type: "color",
+                        field: "zone",
                         stops: [
-                            { value: 50, color: "#FFEDA0", label: "<= 50 mm" }, { value: 150, color: "#FEB24C", label: "<= 150 mm" },
-                            { value: 300, color: "#FC4E2A", label: "<= 300 mm" }, { value: 500, color: "#E31A1C", label: "> 300 mm" }
+                            { value: 50, color: "#FFEDA0", label: "<= 50 mm" },
+                            { value: 150, color: "#FEB24C", label: "<= 150 mm" },
+                            { value: 300, color: "#FC4E2A", label: "<= 300 mm" },
+                            { value: 500, color: "#E31A1C", label: "> 300 mm" }
                         ],
-                        defaultColor: "#cccccc", defaultLabel: "Unknown Thickness"
+                        defaultColor: "#cccccc",
+                        defaultLabel: "Unknown Thickness"
                     }]
                 }
             });
             map.add(paveLayer);
 
             const sketchViewModel = new SketchViewModel({
-                view: view, layer: sketchLayer,
+                view: view,
+                layer: sketchLayer,
                 polygonSymbol: {
-                    type: "simple-fill", color: [150, 150, 150, 0.2],
+                    type: "simple-fill",
+                    color: [150, 150, 150, 0.2],
                     outline: { color: [0, 0, 0, 0.8], width: 2 }
                 },
                 defaultCreateOptions: { mode: "click" }
@@ -157,23 +196,35 @@
                     const sens = prompt("Enter Direction (Sens):", "A");
 
                     if (voie === null || zoneStr === null || description === null || pr1Str === null || pr2Str === null || sens === null) {
-                        alert("Attribute entry cancelled. Feature not added."); resetUI(); return;
+                        alert("Attribute entry cancelled. Feature not added.");
+                        resetUI();
+                        return;
                     }
 
-                    const zone = parseInt(zoneStr, 10), pr1 = parseInt(pr1Str, 10), pr2 = parseInt(pr2Str, 10);
+                    const zone = parseInt(zoneStr, 10);
+                    const pr1 = parseInt(pr1Str, 10);
+                    const pr2 = parseInt(pr2Str, 10);
                     if (isNaN(zone) || isNaN(pr1) || isNaN(pr2)) {
-                        alert("Invalid numeric input for Zone or PR."); resetUI(); return;
+                        alert("Invalid numeric input for Zone or PR.");
+                        resetUI();
+                        return;
                     }
 
                     const newPolygonGraphic = new Graphic({
                         geometry: event.graphic.geometry,
                         attributes: {
-                            Voie: voie, zone: zone, descriptio: description,
-                            date_derni: new Date().getTime(), PR_1: pr1, PR_2: pr2, Sens: sens
+                            Voie: voie,
+                            zone: zone,
+                            descriptio: description,
+                            date_derni: new Date().getTime(),
+                            PR_1: pr1,
+                            PR_2: pr2,
+                            Sens: sens
                         }
                     });
 
-                    paveLayer.applyEdits({ addFeatures: [newPolygonGraphic] }).then((editResults) => {
+                    paveLayer.applyEdits({ addFeatures: [newPolygonGraphic] })
+                    .then((editResults) => {
                         if (editResults.addFeatureResults.length > 0 && !editResults.addFeatureResults[0].error) {
                             alert("Pavement Zone added successfully!");
                         } else {
@@ -182,27 +233,33 @@
                         }
                         resetUI();
                     }).catch((error) => {
-                        console.error("Error applying edits:", error); alert("An error occurred while saving."); resetUI();
+                        console.error("Error applying edits:", error);
+                        alert("An error occurred while saving.");
+                        resetUI();
                     });
                 } else if (event.state === "cancel") {
                     resetUI();
                 }
             });
 
-            basemapSelect.addEventListener("change", (e) => { map.basemap = e.target.value; });
+            basemapSelect.addEventListener("change", (e) => {
+                map.basemap = e.target.value;
+            });
+            
             voieSelect.addEventListener("change", (e) => {
-                voieFilter = e.target.value; applyFilters();
+                voieFilter = e.target.value;
+                applyFilters();
             });
 
             const applyFilters = () => {
                 paveLayer.definitionExpression = voieFilter ? `Voie = '${voieFilter}'` : null;
-                if (paveLayer.definitionExpression) {
-                    paveLayer.queryExtent().then((res) => {
-                        if (res.extent) { view.goTo(res.extent.expand(1.2)); }
-                    });
-                } else {
-                    view.goTo(paveLayer.fullExtent);
-                }
+                const target = paveLayer.definitionExpression ? paveLayer.queryExtent() : paveLayer.fullExtent;
+
+                view.goTo(target).catch((error) => {
+                    if (error.name !== "AbortError") {
+                        console.error("GoTo error:", error);
+                    }
+                });
             };
             
             searchBox.addEventListener("input", () => {
@@ -211,8 +268,11 @@
                 if (searchTerm.length > 1 && !isNaN(searchTerm)) {
                     const query = paveLayer.createQuery();
                     query.where = `PR_1 >= ${searchTerm} AND PR_1 < ${parseInt(searchTerm) + 1000}`;
-                    query.outFields = ["PR_1", "OBJECTID"]; query.returnDistinctValues = true;
-                    query.orderByFields = ["PR_1"]; query.num = 10;
+                    query.outFields = ["PR_1", "OBJECTID"];
+                    query.returnDistinctValues = true;
+                    query.orderByFields = ["PR_1"];
+                    query.num = 10;
+                    
                     paveLayer.queryFeatures(query).then((results) => {
                         if(results.features.length > 0) {
                             results.features.forEach((feature) => {
@@ -221,20 +281,29 @@
                                 resultItem.textContent = `PR: ${prValue}`;
                                 resultItem.addEventListener("click", () => {
                                     searchBox.value = prValue;
-                                    searchResults.innerHTML = ""; searchResults.style.display = "none";
+                                    searchResults.innerHTML = "";
+                                    searchResults.style.display = "none";
+                                    
                                     const zoomQuery = paveLayer.createQuery();
                                     zoomQuery.where = `PR_1 = ${prValue}`;
                                     paveLayer.definitionExpression = zoomQuery.where;
+                                    
                                     paveLayer.queryExtent(zoomQuery).then((response) => {
-                                        if (response.extent) { view.goTo(response.extent.expand(1.5)); }
+                                        if (response.extent) {
+                                            view.goTo(response.extent.expand(1.5));
+                                        }
                                     });
                                 });
                                 searchResults.appendChild(resultItem);
                             });
                             searchResults.style.display = "block";
-                        } else { searchResults.style.display = "none"; }
+                        } else {
+                            searchResults.style.display = "none";
+                        }
                     });
-                } else { searchResults.style.display = "none"; }
+                } else {
+                    searchResults.style.display = "none";
+                }
             });
 
             document.addEventListener('click', (event) => {
@@ -244,7 +313,11 @@
             });
 
             view.when(() => {
-                view.goTo(paveLayer.fullExtent);
+                view.goTo(paveLayer.fullExtent).catch((error) => {
+                    if (error.name !== "AbortError") {
+                        console.error("Initial GoTo error:", error);
+                    }
+                });
             });
         });
     </script>
