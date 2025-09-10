@@ -20,9 +20,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: List files in workspace
+        run: ls -R
+
+      - name: Display content BEFORE replacement
+        run: cat map.html
+
       - name: Replace API Key
         run: sed -i "s|__ARCGIS_API_KEY__|${{ secrets.ARCGIS_API_KEY }}|g" map.html
       
+      - name: Display content AFTER replacement
+        run: cat map.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
