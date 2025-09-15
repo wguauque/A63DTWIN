@@ -198,7 +198,7 @@
                     return [[`\${excelLayerInfoTYPECOUCH} === '${key}'`, colorStr]];
                 }
             });
-            conditions.push(["true", "color('white')"]); // Fallback for any other value
+            conditions.push(["true", "color('white')"]);
             myTileset.style = new Cesium.Cesium3DTileStyle({ color: { conditions: conditions } });
             viewer.scene.requestRender();
         }
@@ -300,7 +300,7 @@
             }
         }
         
-        // --- MODIFIED: This function now uses a setTimeout to fix the timing issue ---
+        // --- MODIFIED: This function now uses the two-step zoom-and-pick method ---
         function navigateToDataLayerSection(prString) {
             if (!secondTileset || !viewer || !prString) return;
             const prNumber = Number(prString);
@@ -311,24 +311,44 @@
             document.getElementById('pr-search').value = prString;
             document.getElementById('autocomplete-results').innerHTML = '';
 
-            // Apply the style to show only the desired section
+            // Step 1: Apply the style to show only the desired section
             secondTileset.style = new Cesium.Cesium3DTileStyle({
                 show: `Math.floor(Number(\${dataLayer}) / 1000) === ${prNumber}`
             });
 
-            // This timeout gives the renderer a frame to update the scene with the new style
-            // before zoomTo calculates the camera position. This fixes the race condition.
-            setTimeout(() => {
-                viewer.zoomTo(secondTileset, new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-60), 2500))
-                    .then(() => {
-                        // After zooming, reset the style to make the whole asset visible again
-                        secondTileset.style = new Cesium.Cesium3DTileStyle();
-                    }).catch((error) => {
-                        console.error("Error during zoomTo operation:", error);
-                        // Ensure style is reset even if an error occurs
-                        secondTileset.style = new Cesium.Cesium3DTileStyle();
-                    });
-            }, 200); // 200ms delay is usually sufficient
+            // Step 2: Perform a rough zoom to get the section in view
+            viewer.zoomTo(secondTileset)
+                .then(() => {
+                    // Step 3: Find the 3D point at the center of the screen
+                    const canvas = viewer.scene.canvas;
+                    const center = new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2);
+                    const centerPoint = viewer.scene.pickPosition(center);
+
+                    if (Cesium.defined(centerPoint)) {
+                        // Step 4: We found a point! Now execute a smooth flight for a clean "lookAt" view.
+                        viewer.camera.flyTo({
+                            destination: centerPoint,
+                            orientation: {
+                                heading: Cesium.Math.toRadians(0.0), // Look North
+                                pitch: Cesium.Math.toRadians(-60.0), // Look down at a 60-degree angle
+                                roll: 0.0
+                            },
+                            // Move the camera so it's 2000 meters away from the point
+                            endTransform: Cesium.Matrix4.fromTranslation(new Cesium.Cartesian3(0, 0, -2000)),
+                            duration: 1.5 // seconds
+                        });
+                    } else {
+                        // Fallback if the pick failed; the section might be too small or off-center
+                        console.warn("Could not find a center point for the selected section.");
+                    }
+                    
+                    // Finally, reset the style so the whole model becomes visible again from the new view
+                    secondTileset.style = new Cesium.Cesium3DTileStyle();
+                }).catch((error) => {
+                    console.error("Error during zoom-to-pick operation:", error);
+                    // Ensure style is reset on error
+                    secondTileset.style = new Cesium.Cesium3DTileStyle();
+                });
         }
         
         function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; let displayName = propName.replace('excelLayerInfo', ''); if (allowedProperties.includes(displayName.toUpperCase()) || propName === "dataLayer") { displayName = (propName === "dataLayer") ? "dataLayer" : displayName; let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
