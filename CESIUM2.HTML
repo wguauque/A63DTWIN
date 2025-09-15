@@ -297,90 +297,57 @@
             }
         }
          
-        // --- MODIFIED: This is a new, more robust "screen scanning" approach to find the feature. ---
+        // --- MODIFIED: This function now flies to the bounding sphere of the specific TILE containing the feature. ---
         async function navigateToDataLayerSection(prString) {
             if (!secondTileset || !viewer || !prString) return;
             const prNumber = Number(prString);
             if (isNaN(prNumber)) return;
 
-            // --- UI Feedback Start ---
-            const searchInput = document.getElementById('pr-search');
-            const originalPlaceholder = searchInput.placeholder;
-            searchInput.placeholder = `Searching for PR ${prString}...`;
-            viewer.container.style.cursor = "wait";
-            // --- UI Feedback End ---
-
-            // Update state and close autocomplete
+            // Update state and UI
             appState.currentDataLayerPrIndex = dataLayerPrList.indexOf(prString);
             document.getElementById('pr-search').value = prString;
             document.getElementById('autocomplete-results').innerHTML = '';
-            
-            // Step 1: Style the tileset to isolate only the feature we're looking for.
+
+            // Step 1: Isolate the feature using a style.
             secondTileset.style = new Cesium.Cesium3DTileStyle({
                 show: `Math.floor(Number(\${dataLayer}) / 1000) === ${prNumber}`
             });
 
             try {
-                // Step 2: Perform a rough zoom to get the isolated feature somewhere in the viewport.
-                await viewer.zoomTo(secondTileset);
+                // Step 2: Fly to the overview of the entire tileset.
+                await viewer.flyTo(secondTileset, { duration: 1.0 });
 
-                // Give the scene a brief moment to render the tile after zooming. This improves picking reliability.
+                // Give a moment for the tiles to load and render after the flight.
                 await new Promise(resolve => setTimeout(resolve, 250));
                 viewer.scene.requestRender();
 
-                // Step 3: Actively scan the screen in a grid pattern to find the feature's 3D coordinates.
-                let foundPosition = null;
+                // Step 3: Pick the feature at the center of the screen to identify its tile.
                 const canvas = viewer.scene.canvas;
-                const width = canvas.clientWidth;
-                const height = canvas.clientHeight;
-                const steps = 10; // Create a 10x10 scanning grid
+                const center = new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2);
+                const pickedFeature = viewer.scene.pick(center);
 
-                scan_loop: // Label to allow breaking out of nested loops
-                for (let i = 1; i < steps; i++) {
-                    for (let j = 1; j < steps; j++) {
-                        const screenPos = new Cesium.Cartesian2((width / steps) * i, (height / steps) * j);
-                        // Use drillPick to get a list of all features at this screen position.
-                        const pickedObjects = viewer.scene.drillPick(screenPos);
-                        
-                        for (const picked of pickedObjects) {
-                            // Check if the picked object is a feature from our target tileset (Asset 2).
-                            if (picked instanceof Cesium.Cesium3DTileFeature && picked.primitive === secondTileset) {
-                                // We found it! Get the 3D world position at that screen coordinate.
-                                foundPosition = viewer.scene.pickPosition(screenPos);
-                                if (Cesium.defined(foundPosition)) {
-                                    break scan_loop; // Exit both loops as soon as we have a valid position.
-                                }
-                            }
-                        }
-                    }
-                }
+                // Step 4: If we successfully picked the feature, fly to its specific tile.
+                if (pickedFeature instanceof Cesium.Cesium3DTileFeature && pickedFeature.primitive === secondTileset) {
+                    // Get the bounding sphere of the tile the feature belongs to.
+                    const tile = pickedFeature.content.tile;
+                    const worldBoundingSphere = tile.boundingSphere.clone();
+                    // The tile's bounding sphere is local, so we transform it to world coordinates.
+                    worldBoundingSphere.center = Cesium.Matrix4.multiplyByPoint(tile.transform, worldBoundingSphere.center, new Cesium.Cartesian3());
 
-                // Step 4: If our scan found the feature's position, execute a precise flight to it.
-                if (Cesium.defined(foundPosition)) {
-                    viewer.camera.flyTo({
-                        destination: foundPosition,
-                        orientation: {
-                            heading: Cesium.Math.toRadians(0.0),
-                            pitch: Cesium.Math.toRadians(-60.0),
-                            roll: 0.0,
-                        },
-                        range: 1500, // Position camera 1500 meters from the target
+                    // Command the camera to fly to this specific, tightly-focused bounding sphere.
+                    await viewer.camera.flyToBoundingSphere(worldBoundingSphere, {
                         duration: 1.5,
+                        offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 1000)
                     });
                 } else {
-                    console.warn(`Could not find a feature for PR ${prString} after scanning the screen.`);
-                    alert(`Section ${prString} could not be located in the 3D model.`);
+                    console.warn(`Could not pick feature for PR ${prString} at the screen center.`);
+                    alert(`Section ${prString} could not be located. It may be outside the loaded data range or hidden.`);
                 }
-
             } catch (error) {
                 console.error("Error during navigation:", error);
-                alert("An error occurred while navigating to the section.");
             } finally {
-                // Step 5: ALWAYS reset the style and UI state to ensure the app is usable afterward.
-                secondTileset.style = new Cesium.Cesium3DTileStyle(); // Show all markers again
-                searchInput.placeholder = originalPlaceholder;
-                viewer.container.style.cursor = "default";
-                viewer.scene.requestRender();
+                // Step 5: ALWAYS reset the style to show all markers again.
+                secondTileset.style = new Cesium.Cesium3DTileStyle();
             }
         }
          
