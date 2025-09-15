@@ -136,11 +136,9 @@
     <script>
         const companyList = [ 'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER' ];
         
-        const prList = [];
-        for (let i = 34; i <= 140; i++) { prList.push(i.toString()); }
-
+        // --- CORRECTED: Expanded the PR list to the requested range ---
         const dataLayerPrList = [];
-        for (let i = 80; i <= 95; i++) { dataLayerPrList.push(i.toString()); }
+        for (let i = 34; i <= 134; i++) { dataLayerPrList.push(i.toString()); }
 
         const allowedProperties = ['TYPECOUCH', 'SURFACE', 'ENTREPRISE', 'PR1', 'NORDRE', 'CHANTIER', 'FOND', 'PR2', 'DATEMS', 'dataLayer'];
 
@@ -300,7 +298,7 @@
             }
         }
         
-        // --- MODIFIED: This function now uses the two-step zoom-and-pick method ---
+        // --- REWRITTEN: This function now reliably navigates to the selected section ---
         function navigateToDataLayerSection(prString) {
             if (!secondTileset || !viewer || !prString) return;
             const prNumber = Number(prString);
@@ -311,44 +309,46 @@
             document.getElementById('pr-search').value = prString;
             document.getElementById('autocomplete-results').innerHTML = '';
 
-            // Step 1: Apply the style to show only the desired section
+            // Step 1: Apply a style to show ONLY the desired section
             secondTileset.style = new Cesium.Cesium3DTileStyle({
                 show: `Math.floor(Number(\${dataLayer}) / 1000) === ${prNumber}`
             });
 
-            // Step 2: Perform a rough zoom to get the section in view
-            viewer.zoomTo(secondTileset)
-                .then(() => {
-                    // Step 3: Find the 3D point at the center of the screen
-                    const canvas = viewer.scene.canvas;
-                    const center = new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2);
-                    const centerPoint = viewer.scene.pickPosition(center);
+            // We need to find the new bounding sphere of only the visible tiles.
+            const visibleTileBounds = [];
+            const listener = secondTileset.tileVisible.addEventListener(function(tile) {
+                visibleTileBounds.push(tile.boundingSphere);
+            });
+            
+            // Force a render pass to trigger the tileVisible event for the styled tiles.
+            viewer.scene.requestRender();
 
-                    if (Cesium.defined(centerPoint)) {
-                        // Step 4: We found a point! Now execute a smooth flight for a clean "lookAt" view.
-                        viewer.camera.flyTo({
-                            destination: centerPoint,
-                            orientation: {
-                                heading: Cesium.Math.toRadians(0.0), // Look North
-                                pitch: Cesium.Math.toRadians(-60.0), // Look down at a 60-degree angle
-                                roll: 0.0
-                            },
-                            // Move the camera so it's 2000 meters away from the point
-                            endTransform: Cesium.Matrix4.fromTranslation(new Cesium.Cartesian3(0, 0, -2000)),
-                            duration: 1.5 // seconds
-                        });
-                    } else {
-                        // Fallback if the pick failed; the section might be too small or off-center
-                        console.warn("Could not find a center point for the selected section.");
-                    }
+            // Use a short delay to allow the tileVisible events to fire.
+            setTimeout(() => {
+                // Important: remove the listener to prevent it from running forever.
+                listener(); 
+
+                if (visibleTileBounds.length > 0) {
+                    // Step 2: Calculate a single bounding sphere that encloses all visible tiles.
+                    const combinedSphere = Cesium.BoundingSphere.fromBoundingSpheres(visibleTileBounds);
                     
-                    // Finally, reset the style so the whole model becomes visible again from the new view
-                    secondTileset.style = new Cesium.Cesium3DTileStyle();
-                }).catch((error) => {
-                    console.error("Error during zoom-to-pick operation:", error);
-                    // Ensure style is reset on error
-                    secondTileset.style = new Cesium.Cesium3DTileStyle();
-                });
+                    // Step 3: Fly the camera to this new, precise bounding sphere.
+                    viewer.camera.flyToBoundingSphere(combinedSphere, {
+                        duration: 1.5,
+                        offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 0) // Adjust camera angle if needed
+                    }).then(() => {
+                        // Step 4 (Optional): Reset the style after arriving to show context.
+                        secondTileset.style = new Cesium.Cesium3DTileStyle();
+                    });
+
+                } else {
+                    console.warn(`No visible tiles found for PR ${prString}. The section may not contain geometry.`);
+                    // Fallback: zoom to the whole tileset if no specific tiles were found.
+                    viewer.zoomTo(secondTileset).then(() => {
+                        secondTileset.style = new Cesium.Cesium3DTileStyle();
+                    });
+                }
+            }, 500); // 500ms should be enough to collect the visible tiles.
         }
         
         function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; let displayName = propName.replace('excelLayerInfo', ''); if (allowedProperties.includes(displayName.toUpperCase()) || propName === "dataLayer") { displayName = (propName === "dataLayer") ? "dataLayer" : displayName; let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
@@ -505,31 +505,5 @@
             document.getElementById('next-pr-btn').addEventListener('click', () => {
                 if (appState.currentDataLayerPrIndex < dataLayerPrList.length - 1 && appState.currentDataLayerPrIndex > -1) {
                     navigateToDataLayerSection(dataLayerPrList[appState.currentDataLayerPrIndex + 1]);
-                }
-            });
-
-            document.getElementById('entreprise-filter').addEventListener('change', () => { clearClippingPlanes(); deactivateAllModes(); appState.entrepriseFilter = document.getElementById('entreprise-filter').value; updateTilesetStyle(); });
-            
-            document.getElementById('reset-btn').addEventListener('click', () => { 
-                deactivateMeasurement(); 
-                clearClippingPlanes();
-                deactivateAllModes();
-                document.getElementById('entreprise-filter').value = ''; 
-                document.getElementById('pr-search').value = ''; 
-                document.getElementById('autocomplete-results').innerHTML = ''; 
-                appState.entrepriseFilter = ''; 
-                appState.prSearch = ''; 
-                appState.currentPrIndex = -1;
-                appState.currentDataLayerPrIndex = -1; 
-                myTileset.style = defaultStyle; 
-                if (secondTileset) {
-                    secondTileset.style = new Cesium.Cesium3DTileStyle();
-                }
-                viewer.zoomTo(myTileset); 
-            });
-        }
-        
-        main();
-    </script>
-</body>
-</html>
+                } else if (appState.currentDataLayerPrIndex === -1 && dataLayerPrList.length > 0) {
+                    // If no section is selected, start from
