@@ -134,9 +134,8 @@
 
 
     <script>
-        const companyList = [ 'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORat', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER' ];
+        const companyList = [ 'COLAS SO', 'GIE A63', 'GIE-COLAS SO', 'GPT  COLAS-MALLET-SIORAT', 'LAFITTE TP', 'PRESTATAIRE PREMIER GER' ];
          
-        // --- MODIFIED: The list of PR sections now covers the full range from 34 to 140. ---
         const dataLayerPrList = [];
         for (let i = 34; i <= 140; i++) { dataLayerPrList.push(i.toString()); }
 
@@ -298,59 +297,91 @@
             }
         }
          
-        // --- MODIFIED: This function now uses a more reliable two-step zoom-and-pick method ---
-        function navigateToDataLayerSection(prString) {
+        // --- MODIFIED: This is a new, more robust "screen scanning" approach to find the feature. ---
+        async function navigateToDataLayerSection(prString) {
             if (!secondTileset || !viewer || !prString) return;
             const prNumber = Number(prString);
             if (isNaN(prNumber)) return;
 
-            // Update state and UI
+            // --- UI Feedback Start ---
+            const searchInput = document.getElementById('pr-search');
+            const originalPlaceholder = searchInput.placeholder;
+            searchInput.placeholder = `Searching for PR ${prString}...`;
+            viewer.container.style.cursor = "wait";
+            // --- UI Feedback End ---
+
+            // Update state and close autocomplete
             appState.currentDataLayerPrIndex = dataLayerPrList.indexOf(prString);
             document.getElementById('pr-search').value = prString;
             document.getElementById('autocomplete-results').innerHTML = '';
-
-            // Step 1: Apply the style to show only the desired section from Asset 2.
+            
+            // Step 1: Style the tileset to isolate only the feature we're looking for.
             secondTileset.style = new Cesium.Cesium3DTileStyle({
                 show: `Math.floor(Number(\${dataLayer}) / 1000) === ${prNumber}`
             });
 
-            // Step 2: Perform a rough zoom to the entire tileset. This ensures
-            // the isolated section is somewhere within the camera's view.
-            viewer.zoomTo(secondTileset)
-                .then(() => {
-                    // Step 3: Find the 3D point at the center of the screen. Since only our
-                    // target section is visible, this pick should land on or very near it.
-                    const canvas = viewer.scene.canvas;
-                    const center = new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2);
-                    const centerPoint = viewer.scene.pickPosition(center);
+            try {
+                // Step 2: Perform a rough zoom to get the isolated feature somewhere in the viewport.
+                await viewer.zoomTo(secondTileset);
 
-                    if (Cesium.defined(centerPoint)) {
-                        // Step 4: We found a precise point! Now execute a smooth flight
-                        // for a clean "look at" view of that exact location.
-                        viewer.camera.flyTo({
-                            destination: centerPoint,
-                            orientation: {
-                                heading: Cesium.Math.toRadians(0.0), // Look North
-                                pitch: Cesium.Math.toRadians(-60.0), // Look down at a 60-degree angle
-                                roll: 0.0
-                            },
-                            // Use endTransform to position the camera 1500 meters away from the target point.
-                            endTransform: Cesium.Matrix4.fromTranslation(new Cesium.Cartesian3(0, 0, 1500)),
-                            duration: 1.5 // seconds
-                        });
-                    } else {
-                        // Fallback if the pick failed; the user is left with the rough zoom.
-                        console.warn("Could not find a center point for the selected section.");
+                // Give the scene a brief moment to render the tile after zooming. This improves picking reliability.
+                await new Promise(resolve => setTimeout(resolve, 250));
+                viewer.scene.requestRender();
+
+                // Step 3: Actively scan the screen in a grid pattern to find the feature's 3D coordinates.
+                let foundPosition = null;
+                const canvas = viewer.scene.canvas;
+                const width = canvas.clientWidth;
+                const height = canvas.clientHeight;
+                const steps = 10; // Create a 10x10 scanning grid
+
+                scan_loop: // Label to allow breaking out of nested loops
+                for (let i = 1; i < steps; i++) {
+                    for (let j = 1; j < steps; j++) {
+                        const screenPos = new Cesium.Cartesian2((width / steps) * i, (height / steps) * j);
+                        // Use drillPick to get a list of all features at this screen position.
+                        const pickedObjects = viewer.scene.drillPick(screenPos);
+                        
+                        for (const picked of pickedObjects) {
+                            // Check if the picked object is a feature from our target tileset (Asset 2).
+                            if (picked instanceof Cesium.Cesium3DTileFeature && picked.primitive === secondTileset) {
+                                // We found it! Get the 3D world position at that screen coordinate.
+                                foundPosition = viewer.scene.pickPosition(screenPos);
+                                if (Cesium.defined(foundPosition)) {
+                                    break scan_loop; // Exit both loops as soon as we have a valid position.
+                                }
+                            }
+                        }
                     }
-                     
-                    // Finally, reset the style so the whole model (all markers) becomes visible again from the new view.
-                    secondTileset.style = new Cesium.Cesium3DTileStyle();
+                }
 
-                }).catch((error) => {
-                    console.error("Error during zoom-to-pick operation:", error);
-                    // Ensure style is reset even if the zoom fails.
-                    secondTileset.style = new Cesium.Cesium3DTileStyle();
-                });
+                // Step 4: If our scan found the feature's position, execute a precise flight to it.
+                if (Cesium.defined(foundPosition)) {
+                    viewer.camera.flyTo({
+                        destination: foundPosition,
+                        orientation: {
+                            heading: Cesium.Math.toRadians(0.0),
+                            pitch: Cesium.Math.toRadians(-60.0),
+                            roll: 0.0,
+                        },
+                        range: 1500, // Position camera 1500 meters from the target
+                        duration: 1.5,
+                    });
+                } else {
+                    console.warn(`Could not find a feature for PR ${prString} after scanning the screen.`);
+                    alert(`Section ${prString} could not be located in the 3D model.`);
+                }
+
+            } catch (error) {
+                console.error("Error during navigation:", error);
+                alert("An error occurred while navigating to the section.");
+            } finally {
+                // Step 5: ALWAYS reset the style and UI state to ensure the app is usable afterward.
+                secondTileset.style = new Cesium.Cesium3DTileStyle(); // Show all markers again
+                searchInput.placeholder = originalPlaceholder;
+                viewer.container.style.cursor = "default";
+                viewer.scene.requestRender();
+            }
         }
          
         function displayFeatureInfo(feature) { const infobox = document.getElementById('infobox'); const propertyIds = feature.getPropertyIds(); let content = '<h3>Selected Feature</h3><table>'; for (let i = 0; i < propertyIds.length; i++) { const propName = propertyIds[i]; let displayName = propName.replace('excelLayerInfo', ''); if (allowedProperties.includes(displayName.toUpperCase()) || propName === "dataLayer") { displayName = (propName === "dataLayer") ? "dataLayer" : displayName; let propValue = feature.getProperty(propName); if (displayName.toUpperCase() === 'DATEMS' && propValue) { propValue = propValue.split(' ')[0]; } propValue = (propValue === null || propValue === undefined) ? "N/A" : propValue; content += `<tr><th>${displayName}</th><td>${propValue}</td></tr>`; } } content += '</table>'; infobox.innerHTML = content; infobox.style.display = 'block'; }
